@@ -53,11 +53,13 @@ static struct ptentry board_part_list[MAX_PTABLE_PARTS] __attribute__ ((aligned 
 
 
 static unsigned num_parts = sizeof(board_part_list)/sizeof(struct ptentry);
-//#define part_empty(p) (p->name[0]==0 && p->start==0 && p->length==0 && p->flags==0 && p->type==0 && p->perm==0)
 #define IS_PART_EMPTY(p) (p->name[0]==0)
 
 extern unsigned load_address;
 extern unsigned boot_into_recovery;
+
+unsigned boot_reason = 0xFFFFFFFF;
+unsigned android_reboot_reason = 0;
 
 void keypad_init(void);
 void display_init(void);
@@ -77,27 +79,13 @@ void target_init(void)
 
 	keys_init();
 	keypad_init();
-
-	uint16_t keys[] = {KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_SOFT1, KEY_SEND, KEY_CLEAR, KEY_BACK, KEY_HOME};
-	for(unsigned i=0; i< sizeof(keys)/sizeof(uint16_t); i++)
-	if (keys_get_state(keys[i]) != 0)
-	{
-		display_init();
-		display_lk_version();
-		//dprintf(ALWAYS,"key %d pressed\n", i);
-		break;
-	}
-	dprintf(INFO, "htcleo_init\n");
+	fill_boot_reason();
 
 	if(get_boot_reason()==2) // booting for offmode charging, start recovery so kernel will charge phone
 	{
 		boot_into_recovery = 1;
-		//dprintf(INFO, "reboot needed... \n");
-		//reboot(0);
 	}
 	dprintf(ALWAYS, "load address %x\n", load_address);
-
-	dprintf(INFO, "flash init\n");
 	flash_init();
 	flash_info = flash_get_info();
 	ASSERT(flash_info);
@@ -144,16 +132,7 @@ void target_init(void)
 		start_block = ptn->start + len;
 		ptable_add(&flash_ptable, ptn->name, ptn->start, len, ptn->flags, TYPE_APPS_PARTITION, PERM_WRITEABLE);
 	}
-
-	htcleo_ptable_dump(&flash_ptable);
 	flash_set_ptable(&flash_ptable);
-}
-void display_lk_version()
-{
-	char *version = "cedesmith's LK (CLK) v";
-	strcat(version,cLK_version);
-	strcat(version,"\n");
-	_dputs(version);
 }
 struct fbcon_config* fbcon_display(void);
 void htcleo_fastboot_init()
@@ -162,12 +141,7 @@ void htcleo_fastboot_init()
 	if(get_boot_reason()==2) reboot(0);
 
 	// display not initialized
-	if(fbcon_display()==NULL)
-	{
-		display_init();
-		display_lk_version();
-		htcleo_ptable_dump(&flash_ptable);
-	}
+	if(fbcon_display()==NULL) display_init();
 
 	cmd_oem_register();
 }
@@ -186,13 +160,10 @@ void reboot_device(unsigned reboot_reason)
 {
 	writel(reboot_reason, 0x2FFB0000);
 	writel(reboot_reason^0x004b4c63, 0x2FFB0004); //XOR with cLK signature
-    reboot(reboot_reason);
+	reboot(reboot_reason);
 }
 
-unsigned boot_reason = 0xFFFFFFFF;
-unsigned android_reboot_reason = 0;
-unsigned check_reboot_mode(void);
-unsigned get_boot_reason(void)
+void fill_boot_reason(void)
 {
 	if(boot_reason==0xFFFFFFFF)
 	{
@@ -208,6 +179,9 @@ unsigned get_boot_reason(void)
 			}
 		}
 	}
+}
+unsigned get_boot_reason(void)
+{
 	return boot_reason;
 }
 unsigned check_reboot_mode(void)
@@ -225,17 +199,6 @@ unsigned target_pause_for_battery_charge(void)
 int target_is_emmc_boot(void)
 {
 	return 0;
-}
-
-void htcleo_ptable_dump(struct ptable *ptable)
-{
-	struct ptentry *ptn;
-	int i;
-
-	for (i = 0; i < ptable->count; ++i) {
-		ptn = &ptable->parts[i];
-		dprintf(INFO, "ptn %d name='%s' start=%08x len=%08x end=%08x \n",i, ptn->name, ptn->start, ptn->length,  ptn->start+ptn->length);
-	}
 }
 
 //cedesmith: current version of qsd8k platform missing display_shutdown so add it

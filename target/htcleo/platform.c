@@ -14,7 +14,6 @@ void platform_early_init(void)
 
 void platform_init(void)
 {
-	dprintf(INFO, "platform_init()\n");
 }
 
 #define FB_FORMAT_RGB565 0
