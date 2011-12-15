@@ -32,7 +32,6 @@
 #include <err.h>
 #include <stdlib.h>
 #include <dev/fbcon.h>
-#include <splash.h>
 
 #include "font5x12.h"
 
@@ -196,50 +195,9 @@ void fbcon_setup(struct fbcon_config *_config)
 	cur_pos.y = 0;
 	max_pos.x = config->width / (FONT_WIDTH+1);
 	max_pos.y = (config->height - 1) / FONT_HEIGHT;
-#if !DISPLAY_SPLASH_SCREEN
-	fbcon_clear();
-#endif
 }
 
 struct fbcon_config* fbcon_display(void)
 {
     return config;
-}
-
-void diplay_image_on_screen(void)
-{
-    unsigned i = 0;
-    unsigned total_x = config->width;
-    unsigned total_y = config->height;
-    unsigned bytes_per_bpp = ((config->bpp) / 8);
-    unsigned image_base = ((((total_y/2) - (SPLASH_IMAGE_WIDTH / 2) - 1) *
-			    (config->width)) + (total_x/2 - (SPLASH_IMAGE_HEIGHT / 2)));
-    fbcon_clear();
-
-#if DISPLAY_TYPE_MIPI
-    if (bytes_per_bpp == 3)
-    {
-        for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
-        {
-            memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer_rgb888 + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
-	}
-    }
-    fbcon_flush();
-    if(is_cmd_mode_enabled())
-        mipi_dsi_cmd_mode_trigger();
-
-#else
-    if (bytes_per_bpp == 2)
-    {
-        for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
-        {
-            memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
-	}
-    }
-    fbcon_flush();
-#endif
-}
+}}
