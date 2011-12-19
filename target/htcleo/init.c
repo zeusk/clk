@@ -77,14 +77,18 @@ void target_init(void)
 	unsigned blocks_per_plen = 1; //blocks per partition length
 	unsigned nand_num_blocks;
 
-	keys_init();
-	keypad_init();
 	fill_boot_reason();
-
+	
 	if(get_boot_reason()==2) // booting for offmode charging, start recovery so kernel will charge phone
 	{
 		boot_into_recovery = 1;
 	}
+	
+	keys_init();
+	keypad_init();
+	
+	uint16_t keys[] = {KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_SOFT1, KEY_SEND, KEY_CLEAR, KEY_BACK, KEY_HOME};
+	
 	dprintf(ALWAYS, "load address %x\n", load_address);
 	flash_init();
 	flash_info = flash_get_info();
@@ -168,13 +172,11 @@ void fill_boot_reason(void)
 	if(boot_reason==0xFFFFFFFF)
 	{
 		boot_reason = readl(MSM_SHARED_BASE+0xef244);
-		dprintf(INFO, "boot reason %x\n", boot_reason);
 		if(boot_reason!=2)
 		{
 			if(readl(0x2FFB0000)==(readl(0x2FFB0004)^0x004b4c63))
 			{
 				android_reboot_reason = readl(0x2FFB0000);
-				dprintf(INFO, "android reboot reason %x\n", android_reboot_reason);
 				writel(0, 0x2FFB0000);
 			}
 		}
