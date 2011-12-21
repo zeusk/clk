@@ -160,7 +160,6 @@ static void fbcon_flush(void)
 		while (!config->update_done());
 }
 
-/* TODO: Take stride into account */
 static void fbcon_scroll_up(void)
 {
 	unsigned buffer_size = (config->width * (config->height - SPLASH_IMAGE_HEIGHT)) * (config->bpp /8);
@@ -171,7 +170,6 @@ static void fbcon_scroll_up(void)
 	fbcon_flush();
 }
 
-/* TODO: take stride into account */
 void fbcon_clear(void)
 {
 	unsigned count = config->width * config->height;
