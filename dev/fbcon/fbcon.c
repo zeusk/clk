@@ -185,7 +185,7 @@ void fbcon_clear(void)
 }
 
 
-static void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg)
+void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg)
 {
 	BGCOLOR = bg;
 	FGCOLOR = fg;

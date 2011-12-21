@@ -51,6 +51,7 @@ void fbcon_putc(char c);
 void fbcon_clear(void);
 bool didyouscroll(void);
 void fbcon_forcetg(bool flag_boolean);
+void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg);
 struct fbcon_config* fbcon_display(void);
 
 #endif /* __DEV_FBCON_H */
