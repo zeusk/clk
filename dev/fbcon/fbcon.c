@@ -48,13 +48,30 @@ static struct fbcon_config *config = NULL;
 #define RGB888_BLACK            0x000000
 #define RGB888_WHITE            0xffffff
 
+unsigned			*__fb_font;
+
 static uint16_t			BGCOLOR;
 static uint16_t			FGCOLOR;
 
 static struct pos		cur_pos;
 static struct pos		max_pos;
 
-unsigned *__fb_font;
+static bool			scrolled;
+
+static void ijustscrolled(void)
+{
+	scrolled = true;
+}
+
+static void cleanedyourcrap(void)
+{
+	scrolled = false;
+}
+
+bool didyouscroll(void)
+{
+	return scrolled;
+}
 
 #if USE_LINUX_FONTS
 
@@ -158,7 +175,8 @@ static void fbcon_scroll_up(void)
 	while(count--) {
 		*dst++ = BGCOLOR;
 	}
-
+	
+	ijustscrolled();
 	fbcon_flush();
 }
 
@@ -167,6 +185,7 @@ void fbcon_clear(void)
 {
 	unsigned count = config->width * config->height;
 	memset(config->base, BGCOLOR, count * ((config->bpp) / 8));
+	cleanedyourcrap();
 }
 
 
