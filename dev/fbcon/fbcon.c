@@ -163,19 +163,10 @@ static void fbcon_flush(void)
 /* TODO: Take stride into account */
 static void fbcon_scroll_up(void)
 {
-	unsigned short *dst = config->base;
-	unsigned short *src = dst + (config->width * FONT_HEIGHT);
-	unsigned count = config->width * (config->height - FONT_HEIGHT);
-
-	while(count--) {
-		*dst++ = *src++;
-	}
-
-	count = config->width * FONT_HEIGHT;
-	while(count--) {
-		*dst++ = BGCOLOR;
-	}
-	
+	unsigned buffer_size = (config->width * (config->height - SPLASH_IMAGE_HEIGHT)) * (config->bpp /8);
+	unsigned line_size = (config->width * FONT_HEIGHT) * (config->bpp / 8);
+	memmove(config->base, config->base + line_size, buffer_size-line_size);
+	memset(config->base+buffer_size-line_size,BGCOLOR,line_size);
 	ijustscrolled();
 	fbcon_flush();
 }
