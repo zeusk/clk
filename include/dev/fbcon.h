@@ -50,6 +50,7 @@ void fbcon_setup(struct fbcon_config *cfg);
 void fbcon_putc(char c);
 void fbcon_clear(void);
 bool didyouscroll(void);
+void fbcon_forcetg(bool flag_boolean);
 struct fbcon_config* fbcon_display(void);
 
 #endif /* __DEV_FBCON_H */
