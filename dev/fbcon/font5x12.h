@@ -25,6 +25,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+ 
+ 
+#define FONT_PPCHAR 2 /* 1 char = font5x12[0] ~ font5x12[1] = 2 members*/
+#define FONT_WIDTH  5
+#define FONT_HEIGHT 12
 
 unsigned font5x12[] = {
     0x00000000, 0x00000000,

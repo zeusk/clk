@@ -48,9 +48,6 @@ static struct fbcon_config *config = NULL;
 #define RGB888_BLACK            0x000000
 #define RGB888_WHITE            0xffffff
 
-#define FONT_WIDTH		5
-#define FONT_HEIGHT		12
-
 static uint16_t			BGCOLOR;
 static uint16_t			FGCOLOR;
 
@@ -149,7 +146,7 @@ void fbcon_putc(char c)
 	pixels += cur_pos.y * FONT_HEIGHT * config->width;
 	pixels += cur_pos.x * (FONT_WIDTH + 1);
 	fbcon_drawglyph(pixels, FGCOLOR, config->stride,
-			font5x12 + (c - 32) * 2);
+			font5x12 + (c - 32) * FONT_PPCHAR);
 
 	cur_pos.x++;
 	if (cur_pos.x < max_pos.x)
