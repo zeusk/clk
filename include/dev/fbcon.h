@@ -49,6 +49,7 @@ struct fbcon_config {
 void fbcon_setup(struct fbcon_config *cfg);
 void fbcon_putc(char c);
 void fbcon_clear(void);
+void fbcon_reset(void);
 bool didyouscroll(void);
 void fbcon_forcetg(bool flag_boolean);
 void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg);

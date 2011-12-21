@@ -202,7 +202,13 @@ void fbcon_clear(void)
 	memset(config->base, BGCOLOR, count * ((config->bpp) / 8));
 	cleanedyourcrap();
 }
-
+void fbcon_reset(void)
+{
+	fbcon_clear();
+	cur_pos.x = 0;
+	cur_pos.y = 0;
+	cleanedyourcrap();
+}
 
 void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg)
 {
