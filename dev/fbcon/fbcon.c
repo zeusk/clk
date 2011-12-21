@@ -158,7 +158,7 @@ static void fbcon_drawglyph(uint16_t *pixels, uint16_t paint, unsigned stride,
 #endif
 	return;
 }
-
+#if LCD_REQUIRE_FLUSH
 static void fbcon_flush(void)
 {
 	if (config->update_start)
@@ -166,7 +166,7 @@ static void fbcon_flush(void)
 	if (config->update_done)
 		while (!config->update_done());
 }
-
+#endif
 static void fbcon_scroll_up(void)
 {
 	unsigned buffer_size = (config->width * (config->height - SPLASH_IMAGE_HEIGHT)) * (config->bpp /8);
@@ -174,7 +174,9 @@ static void fbcon_scroll_up(void)
 	memmove(config->base, config->base + line_size, buffer_size-line_size);
 	memset(config->base+buffer_size-line_size,BGCOLOR,line_size);
 	ijustscrolled();
+#if LCD_REQUIRE_FLUSH
 	fbcon_flush();
+#endif
 }
 
 void fbcon_clear(void)
@@ -226,8 +228,10 @@ newline:
 	if(cur_pos.y >= max_pos.y) {
 		cur_pos.y = max_pos.y - 1;
 		fbcon_scroll_up();
-	} else
-		fbcon_flush();
+	}
+#if LCD_REQUIRE_FLUSH
+	else fbcon_flush();
+#endif
 }
 
 void fbcon_setup(struct fbcon_config *_config)
