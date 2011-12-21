@@ -80,6 +80,23 @@ void fbcon_forcetg(bool flag_boolean)
 	forcedtg = flag_boolean;
 }
 
+int fbcon_get_x(void)
+{
+    return cur_pos.x;
+}
+int fbcon_get_y(void)
+{
+    return cur_pos.y;
+}
+void fbcon_set_x(int offset)
+{
+    cur_pos.x = offset;
+}
+void fbcon_set_y(int offset)
+{
+    cur_pos.y = offset;
+}
+
 #if USE_LINUX_FONTS
 
 	#include "font8x16.h"
