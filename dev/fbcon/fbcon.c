@@ -4,6 +4,8 @@
  *
  * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
+ * Copyright (c) 2011, Shantanu/zeusk. All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -33,8 +35,6 @@
 #include <stdlib.h>
 #include <dev/fbcon.h>
 
-#include "font5x12.h"
-
 struct pos {
 	int x;
 	int y;
@@ -54,12 +54,63 @@ static uint16_t			FGCOLOR;
 static struct pos		cur_pos;
 static struct pos		max_pos;
 
+unsigned *__fb_font;
+
+#if USE_LINUX_FONTS
+
+	#include "font8x16.h"
+	/* more linux fonts here */
+
+uint16_t *pixor;
+
+static unsigned reverse_fnt_byte(unsigned x)
+	{
+		unsigned y = 0;
+		for (uint8_t i = 0; i < 9; ++i)
+		{
+			y <<= 1;
+			y |= (x & 1);
+			x >>= 1;
+		}
+		return y;
+	}
+	
+static void fbcon_drawglyph_helper(uint16_t *pixels, uint16_t paint, unsigned stride, unsigned data)
+	{
+		for (unsigned y = 0; y < (FONT_HEIGHT / FONT_PPCHAR); y++)
+		{
+			data = reverse_fnt_byte(data);
+			for (unsigned x = 0; x < FONT_WIDTH; x++)
+			{
+				if (data & 1) *pixor = paint;
+				else if(dtg) *pixor = TGCOLOR;
+				data >>= 1;
+				pixor++;
+			}
+			pixor += stride;
+		}
+		return;
+	}
+#else
+	#include "font5x12.h"
+#endif
+
 static void fbcon_drawglyph(uint16_t *pixels, uint16_t paint, unsigned stride,
 			    unsigned *glyph)
 {
-	unsigned x, y, data;
 	stride -= FONT_WIDTH;
 
+#if USE_LINUX_FONTS
+	unsigned i = 0;
+	stride -= (FONT_WIDTH + 1);
+	pixor = pixels;
+	while (i < FONT_PPCHAR)
+	{
+		fbcon_drawglyph_helper(pixor, paint, stride, glyph[i]);
+		i++;
+	}
+#else
+	unsigned x, y, data;
 	data = glyph[0];
 	for (y = 0; y < (FONT_HEIGHT / 2); ++y) {
 		for (x = 0; x < FONT_WIDTH; ++x) {
@@ -70,7 +121,6 @@ static void fbcon_drawglyph(uint16_t *pixels, uint16_t paint, unsigned stride,
 		}
 		pixels += stride;
 	}
-
 	data = glyph[1];
 	for (y = 0; y < (FONT_HEIGHT / 2); y++) {
 		for (x = 0; x < FONT_WIDTH; x++) {
@@ -81,6 +131,8 @@ static void fbcon_drawglyph(uint16_t *pixels, uint16_t paint, unsigned stride,
 		}
 		pixels += stride;
 	}
+#endif
+	return;
 }
 
 static void fbcon_flush(void)
@@ -146,7 +198,7 @@ void fbcon_putc(char c)
 	pixels += cur_pos.y * FONT_HEIGHT * config->width;
 	pixels += cur_pos.x * (FONT_WIDTH + 1);
 	fbcon_drawglyph(pixels, FGCOLOR, config->stride,
-			font5x12 + (c - 32) * FONT_PPCHAR);
+			__fb_font + (c - 32) * FONT_PPCHAR);
 
 	cur_pos.x++;
 	if (cur_pos.x < max_pos.x)
@@ -166,6 +218,12 @@ void fbcon_setup(struct fbcon_config *_config)
 {
 	uint32_t bg;
 	uint32_t fg;
+	
+#if USE_LINUX_FONTS
+	__fb_font = font8x16; /* XXX: Implement API for external apps to change font. */
+#else
+	__fb_font = font5x12;
+#endif
 
 	ASSERT(_config);
 
