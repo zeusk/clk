@@ -40,7 +40,7 @@
 
 #include <kernel/thread.h>
 
-#include <lib/dev_inf.h>
+#include <lib/dev_info.h>
 #include <lib/ptable.h>
 
 #include <string.h>
