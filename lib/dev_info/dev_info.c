@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  */
  
-#if ((!(defined(DEV_WINCE))) || (DEV_WINCE!=1))
-	#error "This module is made for devices where native bootloader does not support linux bootstrapping."
+#if ((!(defined(DEV_WINCE))) || (DEV_WINCE))
+	#error "This module is made for devices where native bootloader does not support linux-android bootstrapping."
 #endif
 
 #include <arch/ops.h>

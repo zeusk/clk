@@ -35,22 +35,22 @@
 #define DEV_MAGIC_2_SZ		4
 
 #define DEV_PART_NAME_SZ	16
-#define DEV_NUM_OF_PARTS	32
+#define DEV_NUM_OF_PARTS	12
 
 #define PTN_DEV_INF		"devinfo"
 
 struct dev_part
 {
-	char name[DEV_PART_NAME_SZ];
-	unsigned length;
+	char name[DEV_PART_NAME_SZ];	/* 16 byte */
+	unsigned length;		/* 4 byte */
 };
 
-struct device_inf
+struct device_inf /* 254 byte */
 {
-	char ptable_magic_1[DEV_MAGIC_1_SZ];
-	struct dev_part partition[DEV_NUM_OF_PARTS];
-	short extrom_enabled;
-	char ptable_magic_2[DEV_MAGIC_2_SZ];
+	char ptable_magic_1[DEV_MAGIC_1_SZ];		/* 008 bytes */
+	struct dev_part partition[DEV_NUM_OF_PARTS];	/* 240 bytes */
+	short extrom_enabled;				/* 002 bytes */
+	char ptable_magic_2[DEV_MAGIC_2_SZ];		/* 004 bytes */
 };
 
 #endif /* __LIB_DEV_INF_H */
