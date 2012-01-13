@@ -112,7 +112,7 @@ static unsigned reverse_fnt_byte(unsigned x)
 	}
 	return y;
 }
-static void fbcon_drawglyph_helper(uint16_t *pixels, unsigned stride, unsigned data, bool dtg);
+static void fbcon_drawglyph_helper(uint16_t *pixels, unsigned stride, unsigned data, bool dtg)
 {
 	for (unsigned y = 0; y < (FONT_HEIGHT / FONT_PPCHAR); y++)
 	{
@@ -138,7 +138,7 @@ static void fbcon_drawglyph(uint16_t *pixels, unsigned stride, unsigned *glyph)
 	pixor = pixels;
 	for(unsigned i = 0; i < FONT_PPCHAR; i++)
 	{
-		fbcon_drawglyph_helper(pixor, paint, stride, glyph[i], dtg);
+		fbcon_drawglyph_helper(pixor, stride, glyph[i], dtg);
 	}
 	return;
 }
@@ -153,7 +153,7 @@ static void fbcon_flush(void)
 #endif
 static void fbcon_scroll_up(void)
 {
-	unsigned buffer_size = (config->width * (config->height - SPLASH_IMAGE_HEIGHT)) * (config->bpp /8);
+	unsigned buffer_size = (config->width * config->height) * (config->bpp /8);
 	unsigned line_size = (config->width * FONT_HEIGHT) * (config->bpp / 8);
 	memmove(config->base, config->base + line_size, buffer_size-line_size);
 	memset(config->base+buffer_size-line_size,BGCOLOR,line_size);
@@ -162,7 +162,19 @@ static void fbcon_scroll_up(void)
 	fbcon_flush();
 #endif
 }
+void fbcon_fill_rect ( unsigned ix, unsigned iy, unsigned cpy_h, unsigned cpy_w, uint16_t paint )
+{
+	if ((iy + cpy_h) > config->height) return;
+	if ((ix + cpy_w) > config->width) return;
 
+	unsigned line_size = config->width * (config->bpp / 8);
+	unsigned cpy_size = cpy_w * (config->bpp / 8);
+
+	for (unsigned i = 0; i < (cpy_h - iy); i++)
+	{
+		memset ( config->base + ( (iy*line_size) + (i*line_size) + (line_size-cpy_size) ), paint, cpy_size);
+	}
+}
 static void fbcon_clear(void)
 {
 	unsigned count = config->width * config->height;
@@ -177,11 +189,11 @@ void fbcon_reset(void)
 	cleanedyourcrap();
 }
 
-void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg)
+void fbcon_set_colors(bool sbg, bool sfg, bool stg, unsigned bg, unsigned fg, unsigned tg)
 {
-	BGCOLOR = bg;
-	FGCOLOR = fg;
-	TGCOLOR = tg;
+	if (sbg) BGCOLOR = bg;
+	if (sfg) FGCOLOR = fg;
+	if (stg) TGCOLOR = tg;
 }
 
 void fbcon_putc(char c)
@@ -247,7 +259,7 @@ void fbcon_setup(struct fbcon_config *_config)
 		break;
 	}
 
-	fbcon_set_colors(bg, fg, bg); //Background, Foreground, (Text/Pen)Ground
+	fbcon_set_colors(1,1,1,bg, fg, bg); //Background, Foreground, (Text/Pen)Ground
 
 	cur_pos.x = 0;
 	cur_pos.y = 0;
@@ -258,4 +270,4 @@ void fbcon_setup(struct fbcon_config *_config)
 struct fbcon_config* fbcon_display(void)
 {
     return config;
-}}
+}

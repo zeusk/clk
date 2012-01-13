@@ -51,7 +51,8 @@ void fbcon_putc(char c);
 void fbcon_reset(void);
 bool didyouscroll(void);
 void fbcon_forcetg(bool flag_boolean);
-void fbcon_set_colors(unsigned bg, unsigned fg, unsigned tg);
+void fbcon_set_colors(bool sbg, bool sfg, bool stg, unsigned bg, unsigned fg, unsigned tg);
+void fbcon_fill_rect ( unsigned ix, unsigned iy, unsigned cpy_h, unsigned cpy_w, uint16_t paint );
 
 int fbcon_get_x(void);
 int fbcon_get_y(void);

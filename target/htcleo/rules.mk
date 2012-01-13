@@ -36,9 +36,8 @@ LDFLAGS += -EL
 
 MODULES += \
 	dev/keys \
-	lib/ptable
-
-
+	lib/ptable \
+	lib/devinfo
 
 DEFINES += \
 	MEMBASE=$(MEMBASE)\
@@ -53,9 +52,7 @@ OBJS += \
 	$(LOCAL_DIR)/init.o \
 	$(LOCAL_DIR)/nand.o \
 	$(LOCAL_DIR)/keypad.o \
-	$(LOCAL_DIR)/atags.o 
-
-OBJS += \
+	$(LOCAL_DIR)/atags.o \
 	$(LOCAL_DIR)/htcleo_boot.o \
 	$(LOCAL_DIR)/htcleo_boot_s.o\
 	$(LOCAL_DIR)/platform.o \

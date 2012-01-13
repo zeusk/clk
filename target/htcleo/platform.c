@@ -33,6 +33,5 @@ void display_init(void)
 {
 	fb_cfg.base = (unsigned*)readl( MSM_MDP_BASE1 + 0x90008);
 	fbcon_setup(&fb_cfg);
-	fbcon_clear();
+	fbcon_reset();
 }
-

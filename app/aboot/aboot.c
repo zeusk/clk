@@ -422,17 +422,16 @@ void aboot_init(const struct app_descriptor *app)
 	if (keys_get_state(KEY_CLEAR) != 0)
 		goto fastboot;
 
-	reboot_mode = check_reboot_mode();
-	
-	if (reboot_mode == RECOVERY_MODE) {
+	if (check_reboot_mode() == RECOVERY_MODE) {
 		boot_into_recovery = 1;
-	} else if(reboot_mode == FASTBOOT_MODE) {
+	} else if(check_reboot_mode() == FASTBOOT_MODE) {
 		goto fastboot;
 	}
 
 	recovery_init();
 	boot_linux_from_flash();
 
+fastboot:
 	htcleo_fastboot_init();
 
 	fastboot_register("boot", cmd_boot);
