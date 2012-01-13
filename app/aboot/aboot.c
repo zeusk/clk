@@ -55,8 +55,7 @@
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
-static const char *emmc_cmdline = " androidboot.emmc=true";
-//static const char *battchg_pause = " androidboot.battchg_pause=true";
+//static const char *emmc_cmdline = " androidboot.emmc=";
 static const char *battchg_pause = " androidboot.mode=offmode_charging";
 
 
@@ -126,24 +125,21 @@ void boot_linux(void *kernel, unsigned *tags,
 
 	ptr = target_atag_mem(ptr);
 
-	if (!target_is_emmc_boot()) {
-		/* Skip NAND partition ATAGS for eMMC boot */
-		if ((ptable = flash_get_ptable()) && (ptable->count != 0)) {
-			int i;
-			for(i=0; i < ptable->count; i++) {
-				struct ptentry *ptn;
-				ptn =  ptable_get(ptable, i);
-				if (ptn->type == TYPE_APPS_PARTITION)
-					pcount++;
-			}
-			*ptr++ = 2 + (pcount * (sizeof(struct atag_ptbl_entry) /
-						       sizeof(unsigned)));
-			*ptr++ = 0x4d534d70;
-			for (i = 0; i < ptable->count; ++i)
-				ptentry_to_tag(&ptr, ptable_get(ptable, i));
+	if ((ptable = flash_get_ptable()) && (ptable->count != 0)) {
+		int i;
+		for(i=0; i < ptable->count; i++) {
+			struct ptentry *ptn;
+			ptn =  ptable_get(ptable, i);
+			if (ptn->type == TYPE_APPS_PARTITION)
+				pcount++;
 		}
+		*ptr++ = 2 + (pcount * (sizeof(struct atag_ptbl_entry) /
+					       sizeof(unsigned)));
+		*ptr++ = 0x4d534d70;
+		for (i = 0; i < ptable->count; ++i)
+			ptentry_to_tag(&ptr, ptable_get(ptable, i));
 	}
-
+	
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
 		have_cmdline = 1;
@@ -415,14 +411,6 @@ void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
 
 void aboot_init(const struct app_descriptor *app)
 {
-	if(target_is_emmc_boot() != 0)
-	{
-		dprintf(INFO, "THIS VERSION WAS WRITTEN FOR QSD8250b WHICH DOES NOT SUPPORT EMMC BOOT.\n");
-		dprintf(INFO, "REBOOTING DEVICE IN 5 seconds.\n");
-		thread_sleep(5);
-		reboot_device(ANDRBOOT_MODE);
-	}
-
 	page_size = flash_page_size();
 	page_mask = page_size - 1;
 	
