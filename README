@@ -1,5 +1,6 @@
+Little kernel written by Travis Geiselbrecht, ported by cedesmith to QSD8250b based HD2 for bootstrapping linux kernel on wince device (HTC HD2)
 =================
-		cLK
+	cLK
 =================
 URL: http://forum.xda-developers.com/showthread.php?t=1114053
 
