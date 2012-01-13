@@ -1,4 +1,6 @@
 #!/bin/sh
 rm -rf ./lk
-cp ../lk ./lk -R
+mkdir ./lk
+rsync -av --exclude='*lk-build*' ../ ./lk/
 ./compile clean
+rm -rf ./lk
