@@ -28,6 +28,4 @@
   		 dmesg - kernel debug messages
   		 smesg - spl messages
   		 pwf addr len - dump memory
-  		 set[c,w,s] addr value - set char(1byte), word(4 byes), or string 
-  
-  
+  		 set[c,w,s] addr value - set char(1byte), word(4 byes), or string
