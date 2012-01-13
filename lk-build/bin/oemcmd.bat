@@ -1,0 +1,1 @@
+@fastboot oem %* 2>&1 | oem_filter

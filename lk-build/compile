@@ -1,0 +1,35 @@
+#!/bin/bash
+
+[ `which arm-none-eabi-gcc` ] && TOOLCHAIN_PREFIX="arm-none-eabi-" || TOOLCHAIN_PREFIX="arm-eabi-"
+export TOOLCHAIN_PREFIX
+
+if [ "$1" = "clean" ]; then
+	cd lk 
+	make htcleo clean
+	cd ..
+	rm bin/nbgen
+fi
+
+rm bin/lk.bin
+rm bin/os.nb.payload
+rm bin/os.nb
+rm bin/RUU_signed.nbh
+
+if [ ! -f bin/nbgen ]; then
+	gcc -std=c99 nbgen.c -o bin/nbgen
+fi
+
+cd lk
+make htcleo DEBUG=1
+[ $? -eq 0 ] || exit 1
+cp build-htcleo/lk.bin ../bin/
+cd ..
+
+cd bin
+chmod +x yang
+./nbgen os.nb
+./yang -F RUU_signed.nbh -f os.nb -t 0x400 -s 64 -d PB8110000 -c 11111111 -v CLK1.4 -l WWE
+cd ..
+
+
+

@@ -1,0 +1,39 @@
+diff --git a/arch/arm/mach-msm/board-htcleo-panel.c b/arch/arm/mach-msm/board-htcleo-panel.c
+index a7a701d..1b98611 100644
+--- a/arch/arm/mach-msm/board-htcleo-panel.c
++++ b/arch/arm/mach-msm/board-htcleo-panel.c
+@@ -861,9 +861,17 @@ static void detect_panel_type(void)
+ 	}
+ 	else
+ 	{
+-		printk(" UNKNOWN, stop system now\n");
+ 		htcleo_panel_type = PANELTYPE_UNKNOWN;
+-		BUG();
++		extern int board_mfg_mode(void);
++		if(board_mfg_mode()==5) 
++		{
++			printk(" offmode charging, panel is off\n");
++		}
++		else
++		{
++			printk(" UNKNOWN, stop system now\n");
++			BUG();
++		}
+ 	}
+ }
+ 
+diff --git a/arch/arm/mach-msm/devices_htc.c b/arch/arm/mach-msm/devices_htc.c
+index e5f65e7..6839c0d 100644
+--- a/arch/arm/mach-msm/devices_htc.c
++++ b/arch/arm/mach-msm/devices_htc.c
+@@ -457,6 +457,10 @@ int __init board_mfg_mode_init(char *s)
+ 		mfg_mode = 2;
+ 	else if (!strcmp(s, "charge"))
+ 		mfg_mode = 3;
++	else if (!strcmp(s, "power_test"))
++		mfg_mode = 4;
++	else if (!strcmp(s, "offmode_charging"))
++		mfg_mode = 5; 
+ 
+ 	return 1;
+ }

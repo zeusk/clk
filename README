@@ -1,0 +1,100 @@
+=================
+		cLK
+=================
+URL: http://forum.xda-developers.com/showthread.php?t=1114053
+
+1. FAQ
+3. How To
+  3.1. Flash cLK
+  3.2. Flash a ROM
+  3.3. Start recovery / fastboot / text console
+  3.4. Boot From SD card Builds
+  3.5. Compiling cLK
+4. Known Issues
+5. Credits
+
+================
+1. FAQ
+================
+
+Q: What is cLK?
+A: cLK is an opensource alternative to MAGLDR however, it lacks behind it in terms of rmnet and Windows phone support (let's not forget tetris). Although it also has some unique features to it which will be discussed in detail later on in this post.
+
+Q: Is it better then magldr ?
+A: This question is heavily dependent on the user and his needs however the following points might help you make a better choice:
+ - Magldr has proprietary support for rmnet network which is a lot more stable than the ppp network available on cLK. So if you require Data network 24/7 and do critical work through GPRS/EDGE/3G/HSDPA then please refrain from cLK untill rmnet support is reconsidered and added to the stable branch as ppp network is known for it's unstable nature.
+ - Magldr is capable of booting Windows Phone 7~7.5 and cLK cannot (atleast till now).
+ - cLK boots a tad faster than magldr since it does not have to wait for the radio processor to start unlike magldr does.
+ - ppp network is known to be slightly faster than rmnet.
+ - cLK gives more native feel to the device with fastboot support and the HBOOT like UI.
+ - It is opensource so you can give/take what you want and learn stuff while doing so.
+ - It has on-device re-partitioning so you will never have to hook your device to a computer ever after to just change the rom/partition size.
+ - It has recovery inbuilt for user's with brocken usb port.
+ - It supports offmode charging
+
+=================
+3. How To
+=================
+
+3.1 Flash cLK
+ - make sure you have hspl
+ - enter SPL by holding VOL DOWN key while powering/resting the phone.
+ - flash with customruu like you would a windows rom and/or magldr
+								(OR)
+ - make sure you have hspl
+ - rename the nbh file as LEOIMG.nbh and place in root of sdcard.
+ - enter SPL by holding VOL DOWN key while powering/resting the phone.
+ - Press power button to install the nbh and then take out the battery for a second and power the device up.
+
+3.2 Flash a ROM
+ - Download and install android sdk as per developer.android.com
+ - Startup the sdk and install platform-tools and follow numerous guides on how to setup adb and fastboot on your respected Operating System. (Note: If you're running Windows 7 or later, fastboot drivers should be installed automatically once the device is plugged in bootloader mode)
+ - Get into fastboot by rebooting your phone and holding the back key
+ - Run the command on the PC "fastboot flash recovery recovery.img" to update/change recovery on your phone.
+ - After flashing recovery you can reboot and use CWR by holding the home key or you can flash ROMs using fastboot, as shown below
+ - (fastboot flash boot boot.img, fastboot flash system system.img, fastboot flash userdata userdata.img)
+
+3.3 Start recovery / fastboot / text console
+- holding down any key ( except power ) will show text console
+- home key will enter recovery ( if flashed )
+- back key will enter fastboot mode
+
+3.4 Boot From SD card Builds
+ - Well, there is a catch, since we cannot read the SDcard in clk itself, you have to flash the kernel to another partition (you can create partitions not interfering with partitions android uses like sboot or sdboot or sdcardboot),
+ - Make sure ROM is compatible with MAGLDR
+ - Rename the Folder to "Android" without quotes and place it in root of SDCARD.
+ - Take the files "zImage" and "initrd.gz" from inside that Android folder and put them in a place where you can open your command prompt easily
+ - Now, The build is in place, time for the kernel. Open command prompt and navigate to the folder containing the files mentioned above(zImage & initrd.gz).
+ - Reboot to bootloader.
+ - Now execute the following command AS IT IS from the command prompt you opened previously.
+ - fastboot flash -c "rel_path=Android nand_boot=0" -b 0x11800000 flash:raw <name of the partition you created in step "1"> zImage initrd.gz
+ - Now do "REBOOT HBOOT" on your device
+ - Select Boot EMMC and enjoy !
+ - This long method is only till we don't have fat32 drivers, also for now im working on how to boot to SDcard right from inside another android (like boot to recovery, bootloader etc..)
+
+3.5 Compile cLK
+ - Linux: http://forum.xda-developers.com/showpost.php?p=12461912&postcount=934
+ - Windows: http://forum.xda-developers.com/showpost.php?p=12461551&postcount=932
+
+=================
+4. Known issues
+=================
+
+RMNET does not work.
+
+=================
+5. Credits
+=================
+
+ - Travis Geiselbrecht for writing LK.
+ - Codeaurora and Qualcomm for adding hardware level support for qsd8250.
+ - LeTama for his work on the NAND driver and making linux on NAND possible.
+ - cedesmith for his great work on a spontaneous port and the ppp wrappers.
+ - Martin Johnson for his tinboot witch was a great inspiration.
+ - Martijn Stolk for his kernel segfault solving code and and cotulla for pointing it and his contribution to android on HD2.
+ - Cotulla, bepe and DFT for HSPL.
+ - seadersn for helping with the original compilation work.
+ - stirkac for his fantastic documentation on howto.
+ - Dan1j3l for the offmode charging daemon in recovery and for the partition table.
+ - xdmcdmc for his work on nbgen and on partition table.
+ - all who worked on making linux kernel possible on hd2.
