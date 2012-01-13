@@ -32,7 +32,7 @@ A: This question is heavily dependent on the user and his needs however the foll
  - cLK gives more native feel to the device with fastboot support and the HBOOT like UI.
  - It is opensource so you can give/take what you want and learn stuff while doing so.
  - It has on-device re-partitioning so you will never have to hook your device to a computer ever after to just change the rom/partition size.
- - It has recovery inbuilt for user's with brocken usb port.
+ - It has recovery inbuilt for user's with broken usb port.
  - It supports offmode charging
 
 ================
