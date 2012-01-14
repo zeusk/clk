@@ -4,10 +4,6 @@ INCLUDES += -I$(LOCAL_DIR)/include -I$(LK_TOP_DIR)/platform/msm_shared
 
 PLATFORM := qsd8k
 
-#define system partition size (in MB), if not defined my custom (from magldr) layout is used. see init.c
-DEFINES += SYSTEM_PARTITION_SIZE=150
-#DEFINES += SYSTEM_PARTITION_SIZE=250
-
 #cedesmith note: MEMBASE requires edit in platform/qsd8k/rules.mk
 # maximum partition size will be about 340mb ( MEMBASE-SCRATCH_ADDR)
 MEMBASE := 0x28000000
@@ -37,9 +33,8 @@ LDFLAGS += -EL
 
 MODULES += \
 	dev/keys \
-	lib/ptable
-
-
+	lib/ptable \
+	lib/vptable
 
 DEFINES += \
 	MEMBASE=$(MEMBASE)\
@@ -58,7 +53,5 @@ OBJS += \
 
 OBJS += \
 	$(LOCAL_DIR)/htcleo_boot.o \
-	$(LOCAL_DIR)/htcleo_boot_s.o\
-	$(LOCAL_DIR)/platform.o \
-	$(LOCAL_DIR)/oem_cmd.o
-		
+	$(LOCAL_DIR)/htcleo_boot_s.o \
+	$(LOCAL_DIR)/platform.o 

@@ -51,16 +51,13 @@ void apps_init(void)
 static int app_thread_entry(void *arg)
 {
 	const struct app_descriptor *app = (const struct app_descriptor *)arg;
-
 	app->entry(app, NULL);
-
 	return 0;
 }
 
 static void start_app(const struct app_descriptor *app)
 {
 	printf("starting app %s\n", app->name);
-
 	thread_resume(thread_create(app->name, &app_thread_entry, (void *)app, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE));	
 }
 

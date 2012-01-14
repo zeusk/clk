@@ -104,6 +104,7 @@ void thread_set_priority(int priority);
 thread_t *thread_create(const char *name, thread_start_routine entry, void *arg, int priority, size_t stack_size);
 status_t thread_resume(thread_t *);
 void thread_exit(int retcode) __NO_RETURN;
+void thread_kill(thread_t *) __NO_RETURN;
 void thread_sleep(time_t delay);
 
 void dump_thread(thread_t *t);
@@ -205,7 +206,11 @@ int wait_queue_wake_all(wait_queue_t *, bool reschedule, status_t wait_queue_err
 status_t thread_unblock_from_wait_queue(thread_t *t, bool reschedule, status_t wait_queue_error);
 
 /* thread level statistics */
+#if DEBUGLEVEL > 1
+#define THREAD_STATS 1
+#else
 #define THREAD_STATS 0
+#endif
 #if THREAD_STATS
 struct thread_stats {
 	bigtime_t idle_time;

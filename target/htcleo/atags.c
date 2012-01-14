@@ -10,12 +10,11 @@ unsigned* target_atag_mem(unsigned* ptr)
 	*ptr++ = 0x1CFC0000; //mem size from kernel config with bravo dsp
 	*ptr++ = 0x11800000; //mem base
 #endif
-
 	//add atag to notify nand boot
 	*ptr++ = 4;
 	*ptr++ = 0x4C47414D; 	// NAND atag (MAGL :))
 	*ptr++ = 0x004b4c63; 	// cLK signature
-	*ptr++ = 13;			// cLK version number
+	*ptr++ = 10;			// cLK version number
 
 	return ptr;
 }

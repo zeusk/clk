@@ -30,7 +30,7 @@
 #define __APP_FASTBOOT_H
 
 int fastboot_init(void *xfer_buffer, unsigned max);
-
+unsigned int fastboot_cstat(void);
 /* register a command handler 
  * - command handlers will be called if their prefix matches
  * - they are expected to call fastboot_okay() or fastboot_fail()
@@ -45,6 +45,5 @@ void fastboot_publish(const char *name, const char *value);
 /* only callable from within a command handler */
 void fastboot_okay(const char *result);
 void fastboot_fail(const char *reason);
-
 
 #endif

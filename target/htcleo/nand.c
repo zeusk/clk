@@ -763,7 +763,7 @@ static int flash_nand_read_config(dmov_s *cmdlist, unsigned *ptrlist)
 	if (flash_info.type == FLASH_16BIT_NAND_DEVICE) {
 		nand_cfg1 |= CFG1_WIDE_FLASH;
 	}
-	dprintf(INFO, "nandcfg: %x %x (initial)\n", CFG0_TMP, CFG1_TMP);
+	//dprintf(INFO, "nandcfg: %x %x (initial)\n", CFG0_TMP, CFG1_TMP);
 
 	CFG0 = (((flash_pagesize >> 9) - 1) <<  6)  /* 4/8 cw/pg for 2/4k */
 		|	(512 <<  9)  /* 516 user data bytes */
@@ -784,7 +784,7 @@ static int flash_nand_read_config(dmov_s *cmdlist, unsigned *ptrlist)
 	CFG1 = CFG1
 		&   ~(1 <<  0)  /* Enable ecc */
 		&   ~(1 << 16); /* Bad block in user data area */
-	dprintf(INFO, "nandcfg: %x %x (used)\n", CFG0, CFG1);
+	//dprintf(INFO, "nandcfg: %x %x (used)\n", CFG0, CFG1);
 
 	return 0;
 }
@@ -844,12 +844,12 @@ static void flash_read_id(dmov_s *cmdlist, unsigned *ptrlist)
 		dprintf(INFO, "Device not supported.  Assuming 8 bit NAND device\n");
 		flash_info.type = FLASH_8BIT_NAND_DEVICE;
 	}
-	dprintf(INFO, "nandid: 0x%x maker=0x%02x device=0x%02x page_size=%d\n",
-		flash_info.id, flash_info.vendor, flash_info.device,
-		flash_info.page_size);
-	dprintf(INFO, "		spare_size=%d block_size=%d num_blocks=%d\n",
-		flash_info.spare_size, flash_info.block_size,
-		flash_info.num_blocks);
+	//dprintf(INFO, "nandid: 0x%x maker=0x%02x device=0x%02x page_size=%d\n",
+		//flash_info.id, flash_info.vendor, flash_info.device,
+		//flash_info.page_size);
+	//dprintf(INFO, "		spare_size=%d block_size=%d num_blocks=%d\n",
+		//flash_info.spare_size, flash_info.block_size,
+		//flash_info.num_blocks);
 }
 
 static int flash_erase_block(dmov_s *cmdlist, unsigned *ptrlist, unsigned page)
@@ -879,6 +879,7 @@ static unsigned *flash_ptrlist;
 static dmov_s *flash_cmdlist;
 
 static struct ptable *flash_ptable = NULL;
+static struct ptable *flash_vptable = NULL;
 
 void flash_init(void)
 {
@@ -904,10 +905,20 @@ struct ptable *flash_get_ptable(void)
 	return flash_ptable;
 }
 
+struct ptable *flash_get_vptable(void)
+{
+	return flash_vptable;
+}
+
 void flash_set_ptable(struct ptable *new_ptable)
 {
 	ASSERT(flash_ptable == NULL && new_ptable != NULL);
 	flash_ptable = new_ptable;
+}
+
+void flash_set_vptable(struct ptable * new_ptable)
+{
+	flash_vptable = new_ptable;
 }
 
 struct flash_info *flash_get_info(void)
@@ -945,7 +956,7 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 	int isbad = 0;
 	int start_block_count = 0;
 
-	dprintf(INFO, "flash read: %s %x %x\n", ptn->name, offset, bytes);
+	//dprintf(INFO, "flash read: %s %i %i\n", ptn->name, offset, bytes);
 	ASSERT(ptn->type == TYPE_APPS_PARTITION);
 	set_nand_configuration(TYPE_APPS_PARTITION);
 
@@ -958,17 +969,19 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 		start_block_count = (current_block - start_block);
 		while (start_block_count && (start_block < (ptn->start + ptn->length))) {
 			isbad = _flash_block_isbad(flash_cmdlist, flash_ptrlist, start_block*64);
-			if (isbad)
+			if (isbad){
 				page += 64;
-			else
+				dprintf(INFO,"BAD BLOCK\n");
+			}else{
 				start_block_count--;
+			}
 			start_block++;
 		}
 	}
 
 	while((page < lastpage) && !start_block_count) {
 		if(count == 0) {
-			dprintf(INFO, "flash_read_image: success (%d errors)\n", errors);
+			//dprintf(INFO, "flash_read_image: success (%d errors)\n", errors);
 			return 0;
 		}
 
@@ -976,12 +989,14 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 
 		if (result == -1) {
 			// bad page, go to next page
+			//dprintf(INFO,"bad page...\n");
 			page++;
 			errors++;
 			continue;
 		}
 		else if (result == -2) {
 			// bad block, go to next block same offset
+			//dprintf(INFO,"bad block...\n");
 			page += 64;
 			errors++;
 			continue;
@@ -1071,7 +1086,7 @@ int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 		page += 64;
 	}
 
-	dprintf(INFO, "flash_write_image: success\n");
+	//dprintf(INFO, "flash_write_image: success\n");
 	return 0;
 }
 

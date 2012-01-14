@@ -175,15 +175,13 @@ struct ept_queue_item
 #define PORTSC_LS         (3 << 10) /* Read - Port's Line status */
 #define B_SESSION_VALID   (1 << 11)
 
-static unsigned WALL_CHARGER = FALSE;
-static unsigned HOST_CHARGER = FALSE;
-static unsigned ENABLE_CHARGING = TRUE;
-static unsigned charger_connected = FALSE;
 
 enum charger_type {
    CHG_HOST_PC,
    CHG_WALL,
    CHG_UNDEFINED,
 };
+
+int usb_cable_status(void);
 
 #endif

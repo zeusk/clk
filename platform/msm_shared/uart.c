@@ -192,6 +192,7 @@ int uart_putc (int port, char c)
 		_uart_putc(0, '\r');
 	}
 	_uart_putc(0, c);
+	return 1;
 }
 
 int uart_getc(int port, bool wait)

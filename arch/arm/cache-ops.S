@@ -318,17 +318,21 @@ invalidate_cache_v7:
 /* shared cache flush routines */
 
 	/* void arch_flush_cache_range(addr_t start, size_t len); */
-FUNCTION(arch_clean_cache_range)
-0:
-	mcr		p15, 0, r0, c7, c10, 1		// clean cache to PoC by MVA
-	add		r0, r0, #CACHE_LINE
-	subs	r1, r1, #CACHE_LINE
-	bhs		0b
+ FUNCTION(arch_clean_cache_range)
+#if ARM_WITH_CP15
+	add		r2, r0, r1					// calculate the end address
+	bic		r0, #(CACHE_LINE-1)			// align the start with a cache line
+ 0:
+ 	mcr		p15, 0, r0, c7, c10, 1		// clean cache to PoC by MVA
+ 	add		r0, r0, #CACHE_LINE
+	cmp		r0, r2
+	blo		0b
+ 	
+ 	mov		r0, #0
+	mcr		p15, 0, r0, c7, c10, 4		// data sync barrier
+#endif
+ 	bx		lr
 	
-	mov		r0, #0
-	mcr		p15, 0, r0, c7, c10, 4		// data sync barrier (formerly drain write buffer)
-
-	bx		lr
 
 	/* void arch_flush_invalidate_cache_range(addr_t start, size_t len); */
 FUNCTION(arch_clean_invalidate_cache_range)

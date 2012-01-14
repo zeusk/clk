@@ -45,6 +45,7 @@ void uart3_clock_init(void);
 void uart_init(void);
 
 struct fbcon_config *lcdc_init(void);
+void fbcon_set_colors_extern(unsigned bg, unsigned fg);
 
 void platform_early_init(void)
 {

@@ -28,6 +28,7 @@ C_STRING_OPS := \
 	strspn \
 	strstr \
 	strtok \
+	strtoul \
 	strxfrm
 
 LIBC_STRING_C_DIR := $(LOCAL_DIR)

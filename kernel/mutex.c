@@ -49,9 +49,9 @@ void mutex_destroy(mutex_t *m)
 	ASSERT(m->magic == MUTEX_MAGIC);
 #endif
 
-	if (m->holder != 0 && current_thread != m->holder)
-		panic("mutex_destroy: thread %p (%s) tried to release mutex %p it doesn't own. owned by %p (%s)\n", 
-				current_thread, current_thread->name, m, m->holder, m->holder ? m->holder->name : "none");
+	//if (m->holder != 0 && current_thread != m->holder)
+	//	panic("mutex_destroy: thread %p (%s) tried to release mutex %p it doesn't own. owned by %p (%s)\n", 
+	//			current_thread, current_thread->name, m, m->holder, m->holder ? m->holder->name : "none");
 
 	m->magic = 0;
 	m->count = 0;

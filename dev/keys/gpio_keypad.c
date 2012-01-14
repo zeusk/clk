@@ -62,7 +62,7 @@ struct gpio_qwerty_kp {
 };
 
 static struct gpio_qwerty_kp *qwerty_keypad;
-/* TODO: Support multiple keypads? */
+/* TODO(Not Needed): Support multiple keypads? maybe for other platforms but for HD2, this serves no purposes and can be looked into lateron. */
 static struct gpio_kp *keypad;
 
 static void check_output(struct gpio_kp *kp, int out, int polarity)
@@ -605,7 +605,7 @@ void pmic_write(unsigned address, unsigned data)
   write_func wr_function = &i2c_ssbi_write_bytes;
   if(wr_function == NULL)
     return;
-  if ((*wr_function)(&data, 1, address))
+  if ((*wr_function)((unsigned char *)&data, 1, address))
     dprintf (CRITICAL, "Error in initializing register\n");
 
 }

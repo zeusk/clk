@@ -29,9 +29,11 @@ extern "C" {
 
 void arch_early_init(void);
 void arch_init(void);
+void arch_quiesce(void);
 
 #if defined(__cplusplus)
 }
 #endif
-
+/* arch specific bits */
+#include <arch/defines.h>
 #endif

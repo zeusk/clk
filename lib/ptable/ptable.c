@@ -36,7 +36,6 @@
 void ptable_init(struct ptable *ptable)
 {
 	ASSERT(ptable);
-
 	memset(ptable, 0, sizeof(struct ptable));
 }
 
@@ -66,10 +65,12 @@ void ptable_dump(struct ptable *ptable)
 
 	for (i = 0; i < ptable->count; ++i) {
 		ptn = &ptable->parts[i];
-		dprintf(INFO, "ptn %d name='%s' start=%08x len=%08x "
+		//Fix it lateron. Ptable dumping not so important for now -.-
+		/*dprintf(INFO, "ptn %d name='%s' start=%08x len=%08x "
 			"flags=%08x type=%s Writable=%s\n", i, ptn->name, ptn->start, ptn->length,
-			ptn->flags, ptype[ptn->type], pperm[ptn->perm]);
-	}
+			ptn->flags, ptype[ptn->type], pperm[ptn->perm]);*/
+		
+		}
 }
 
 struct ptentry *ptable_find(struct ptable *ptable, const char *name)

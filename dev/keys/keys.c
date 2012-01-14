@@ -40,7 +40,6 @@ void keys_init(void)
 {
 	memset(key_bitmap, 0, sizeof(key_bitmap));
 }
-
 void keys_post_event(uint16_t code, int16_t value)
 {
 	if (code >= MAX_KEYS) {
@@ -56,7 +55,7 @@ void keys_post_event(uint16_t code, int16_t value)
 
 //	dprintf(INFO, "key state change: %d %d\n", code, value);
 }
-
+int keys_get_state_n(uint16_t code){return bitmap_test(key_bitmap,code);}
 int keys_get_state(uint16_t code)
 {
 	if (code >= MAX_KEYS) {

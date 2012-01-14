@@ -101,18 +101,19 @@ int set_recovery_message(const struct recovery_message *in)
 
 	n = pagesize * (MISC_COMMAND_PAGE + 1);
 
-	if (flash_read(ptn, offset, SCRATCH_ADDR, n)) {
+	if (flash_read(ptn, offset, (void *)SCRATCH_ADDR, n)) {
 		dprintf(CRITICAL, "ERROR: Cannot read recovery_header\n");
 		return -1;
 	}
 
 	offset += (pagesize * MISC_COMMAND_PAGE);
 	offset += SCRATCH_ADDR;
-	memcpy(offset, in, sizeof(*in));
+	memcpy((void *)offset, in, sizeof(*in));
 	if (flash_write(ptn, 0, (void *)SCRATCH_ADDR, n)) {
 		dprintf(CRITICAL, "ERROR: flash write fail!\n");
 		return -1;
 	}
+	return 1;
 }
 
 int read_update_header_for_bootloader(struct update_header *header)
@@ -139,7 +140,7 @@ int read_update_header_for_bootloader(struct update_header *header)
 	}
 	memcpy(header, buf, sizeof(*header));
 
-	if(strncmp(header->MAGIC, UPDATE_MAGIC, UPDATE_MAGIC_SIZE))
+	if(strncmp((char *)header->MAGIC, (char *)UPDATE_MAGIC, UPDATE_MAGIC_SIZE))
 	{
 		return -1;
 	}
@@ -170,7 +171,7 @@ int update_firmware_image (struct update_header *header, char *name)
 	offset += header->image_offset;
 	n = (header->image_length + pagemask) & (~pagemask);
 
-	if (flash_read(ptn, offset, SCRATCH_ADDR, n)) {
+	if (flash_read(ptn, offset, (void *)SCRATCH_ADDR, n)) {
 		dprintf(CRITICAL, "ERROR: Cannot read radio image\n");
 		return -1;
 	}
@@ -181,7 +182,7 @@ int update_firmware_image (struct update_header *header, char *name)
 		return -1;
 	}
 
-	if (flash_write(ptn, 0, SCRATCH_ADDR, n)) {
+	if (flash_write(ptn, 0, (void *)SCRATCH_ADDR, n)) {
 		dprintf(CRITICAL, "ERROR: flash write fail!\n");
 		return -1;
 	}
@@ -221,6 +222,11 @@ int update_firmware_image (struct update_header *header, char *name)
  * It is recovery's responsibility to clean up the mess afterwards.
  */
 
+int sdrecovery_init (void)
+{
+	return 0;
+} 
+extern unsigned boot_into_sboot;
 int recovery_init (void)
 {
 	struct recovery_message msg;
@@ -231,12 +237,19 @@ int recovery_init (void)
 	// get recovery message
 	if(get_recovery_message(&msg))
 		return -1;
-	if (msg.command[0] != 0 && msg.command[0] != 255) {
-		dprintf("Recovery command: %.*s\n", sizeof(msg.command), msg.command);
+	if (((int)msg.command[0]) != (int)0 && ((int)msg.command[0]) != (int)255) {
+		//Debug Statement leading to warnings, will check lateron.
+		//dprintf("Recovery command: %.*s\n", (char *)sizeof(msg.command), msg.command);
 	}
 	msg.command[sizeof(msg.command)-1] = '\0'; //Ensure termination
-
-	if (!strcmp("boot-recovery",msg.command)) {
+	if (!strcmp("boot-sboot",msg.command)) {
+		valid_command = 1;
+		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
+		strcpy(msg.status, "OKAY");
+		set_recovery_message(&msg);	// send recovery message
+		boot_into_sboot = 1;	// Boot in sboot
+		return 0;
+	} else if (!strcmp("boot-recovery",msg.command)) {
 		valid_command = 1;
 		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
 		strcpy(msg.status, "OKAY");

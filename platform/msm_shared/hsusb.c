@@ -31,11 +31,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <debug.h>
+#include <reg.h>
+
 #include <platform/iomap.h>
 #include <platform/irqs.h>
 #include <platform/interrupts.h>
+#include <platform/timer.h>
+
 #include <kernel/thread.h>
-#include <reg.h>
 
 #include <dev/udc.h>
 
@@ -45,6 +48,11 @@ int charger_usb_disconnected(void);
 int charger_usb_i(unsigned current);
 int charger_usb_is_pc_connected(void);
 int charger_usb_is_charger_connected(void);
+
+static unsigned WALL_CHARGER = FALSE;
+static unsigned HOST_CHARGER = FALSE;
+static unsigned ENABLE_CHARGING = TRUE;
+static unsigned charger_connected = FALSE;
 
 /* common code - factor out into a shared file */
 
@@ -113,10 +121,7 @@ unsigned udc_string_desc_alloc(const char *str)
 
 /* end of common code */
 
-__WEAK void hsusb_clock_init(void)
-{
-	return 0;
-}
+__WEAK void hsusb_clock_init(void){}
 
 #if 1
 #define DBG(x...) do {} while(0)
@@ -531,7 +536,7 @@ int udc_init(struct udc_device *dev)
 
 	epts = memalign(4096, 4096);
 
-	dprintf(INFO, "USB init ept @ %p\n", epts);
+	//dprintf(INFO, "USB init ept @ %p\n", epts);
 	memset(epts, 0, 32 * sizeof(struct ept_queue_head));
 
 	//dprintf(INFO, "USB ID %08x\n", readl(USB_ID));
@@ -594,7 +599,7 @@ enum handler_return udc_interrupt(void *arg)
 		writel(readl(USB_ENDPTSETUPSTAT), USB_ENDPTSETUPSTAT);
 		writel(0xffffffff, USB_ENDPTFLUSH);
 		writel(0, USB_ENDPTCTRL(1));
-		DBG1("-- reset --\n");
+		//DBG1("-- reset --\n");
 		usb_online = 0;
 		usb_config_value = 0;
 		the_gadget->notify(the_gadget, UDC_EVENT_OFFLINE);
@@ -612,7 +617,7 @@ enum handler_return udc_interrupt(void *arg)
 		usb_status(0, usb_highspeed);
 	}
 	if (n & STS_SLI) {
-		DBG1("-- suspend --\n");
+		//DBG1("-- suspend --\n");
 #ifdef ENABLE_BATTERY_CHARGING
 		if(HOST_CHARGER == TRUE){
 		  charger_usb_i(2);
@@ -620,7 +625,7 @@ enum handler_return udc_interrupt(void *arg)
 #endif
 	}
 	if (n & STS_PCI) {
-		DBG1("-- portchange --\n");
+		//DBG1("-- portchange --\n");
 		unsigned spd = (readl(USB_PORTSC) >> 26) & 3;
 		if(spd == 2) {
 			usb_highspeed = 1;
@@ -723,7 +728,7 @@ int udc_start(void)
 	unsigned char *data;
 	unsigned size;
 
-	dprintf(ALWAYS, "udc_start()\n");
+	//dprintf(ALWAYS, "udc_start()\n");
 
 	if (!the_device) {
 		dprintf(CRITICAL, "udc cannot start before init\n");
@@ -777,7 +782,6 @@ int udc_start(void)
 
 int udc_stop(void)
 {
-	int val;
     writel(0, USB_USBINTR);
 	mask_interrupt(INT_USB_HS);
 
@@ -790,7 +794,6 @@ int udc_stop(void)
 	writel(val, 0x009034C0);
 #endif
 	thread_sleep(10);
-
 	return 0;
 }
 

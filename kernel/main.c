@@ -120,6 +120,14 @@ static int bootstrap2(void *arg)
 	dprintf(SPEW, "top of bootstrap2()\n");
 
 	arch_init();
+	
+	// XXX put this somewhere else
+	#if WITH_LIB_BIO
+		bio_init();
+	#endif
+	#if WITH_LIB_FS
+		fs_init();
+	#endif
 
 	// initialize the rest of the platform
 	dprintf(SPEW, "initializing platform\n");

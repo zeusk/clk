@@ -280,6 +280,12 @@ void reboot(unsigned reboot_reason)
         for (;;) ;
 }
 
+void shutdown(void)
+{
+		msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
+		for (;;) ;
+}
+
 /* Apps processor calls this API to tell modem processor that a PC USB
  * is connected return true if the USB HOST PC charger charging is
  * supported */
@@ -355,14 +361,14 @@ int vreg_set_level(unsigned id, unsigned mv)
 
 int vreg_enable(unsigned id)
 {
-    int enable = 1;
+    unsigned int enable = 1;
     return msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
 
 }
 
 int vreg_disable(unsigned id)
 {
-    int enable = 0;
+    unsigned int enable = 0;
     return msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
 }
 #endif

@@ -17,7 +17,9 @@ void platform_init(void)
 	dprintf(INFO, "platform_init()\n");
 }
 
+#ifndef FB_FORMAT_RGB565
 #define FB_FORMAT_RGB565 0
+#endif
 #define LCDC_FB_BPP 16
 #define MSM_MDP_BASE1 0xAA200000
 

@@ -33,10 +33,20 @@
 #include <kernel/event.h>
 #include <dev/udc.h>
 
+
 void boot_linux(void *bootimg, unsigned sz);
 
+/*
+unsigned int c_usb_stat=0;
+unsigned int fastboot_cstat(void){
+	return c_usb_stat;
+}
+void fastboot_sstat(unsigned int stat){
+	c_usb_stat = stat;
+}
+*/
 /* todo: give lk strtoul and nuke this */
-static unsigned hex2unsigned(const char *x)
+         unsigned hex2unsigned(const char *x)
 {
     unsigned n = 0;
 
@@ -76,7 +86,7 @@ struct fastboot_var {
 	const char *value;
 };
 	
-static struct fastboot_cmd *cmdlist;
+         struct fastboot_cmd *cmdlist;
 
 void fastboot_register(const char *prefix,
 		       void (*handle)(const char *arg, void *data, unsigned sz))
@@ -92,7 +102,7 @@ void fastboot_register(const char *prefix,
 	}
 }
 
-static struct fastboot_var *varlist;
+         struct fastboot_var *varlist;
 
 void fastboot_publish(const char *name, const char *value)
 {
@@ -107,32 +117,32 @@ void fastboot_publish(const char *name, const char *value)
 }
 
 
-static event_t usb_online;
-static event_t txn_done;
-static unsigned char buffer[4096];
-static struct udc_endpoint *in, *out;
-static struct udc_request *req;
+         event_t usb_online;
+         event_t txn_done;
+         unsigned char buffer[4096];
+         struct udc_endpoint *in, *out;
+         struct udc_request *req;
 int txn_status;
 
-static void *download_base;
-static unsigned download_max;
-static unsigned download_size;
+         void *download_base;
+         unsigned download_max;
+         unsigned download_size;
 
 #define STATE_OFFLINE	0
 #define STATE_COMMAND	1
 #define STATE_COMPLETE	2
 #define STATE_ERROR	3
 
-static unsigned fastboot_state = STATE_OFFLINE;
+         unsigned fastboot_state = STATE_OFFLINE;
 
-static void req_complete(struct udc_request *req, unsigned actual, int status)
+         void req_complete(struct udc_request *req, unsigned actual, int status)
 {
 	txn_status = status;
 	req->length = actual;
 	event_signal(&txn_done, 0);
 }
 
-static int usb_read(void *_buf, unsigned len)
+         int usb_read(void *_buf, unsigned len)
 {
 	int r;
 	unsigned xfer;
@@ -149,13 +159,13 @@ static int usb_read(void *_buf, unsigned len)
 		req->complete = req_complete;
 		r = udc_request_queue(out, req);
 		if (r < 0) {
-			dprintf(INFO, "usb_read() queue failed\n");
+			//dprintf(INFO, "usb_read() queue failed\n");
 			goto oops;
 		}
 		event_wait(&txn_done);
 
 		if (txn_status < 0) {
-			dprintf(INFO, "usb_read() transaction failed\n");
+			//dprintf(INFO, "usb_read() transaction failed\n");
 			goto oops;
 		}
 
@@ -170,11 +180,12 @@ static int usb_read(void *_buf, unsigned len)
 	return count;
 
 oops:
+	//fastboot_sstat(0);
 	fastboot_state = STATE_ERROR;
 	return -1;
 }
 
-static int usb_write(void *buf, unsigned len)
+         int usb_write(void *buf, unsigned len)
 {
 	int r;
 
@@ -186,17 +197,18 @@ static int usb_write(void *buf, unsigned len)
 	req->complete = req_complete;
 	r = udc_request_queue(in, req);
 	if (r < 0) {
-		dprintf(INFO, "usb_write() queue failed\n");
+		//dprintf(INFO, "usb_write() queue failed\n");
 		goto oops;
 	}
 	event_wait(&txn_done);
 	if (txn_status < 0) {
-		dprintf(INFO, "usb_write() transaction failed\n");
+		//dprintf(INFO, "usb_write() transaction failed\n");
 		goto oops;
 	}
 	return req->length;
 
 oops:
+	//fastboot_sstat(0);
 	fastboot_state = STATE_ERROR;
 	return -1;
 }
@@ -233,7 +245,7 @@ int fastboot_write(void *buf, unsigned len)
 	return usb_write(buf, len);
 }
 
-static void cmd_getvar(const char *arg, void *data, unsigned sz)
+         void cmd_getvar(const char *arg, void *data, unsigned sz)
 {
 	struct fastboot_var *var;
 
@@ -246,7 +258,7 @@ static void cmd_getvar(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-static void cmd_download(const char *arg, void *data, unsigned sz)
+         void cmd_download(const char *arg, void *data, unsigned sz)
 {
 	char response[64];
 	unsigned len = hex2unsigned(arg);
@@ -263,7 +275,7 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 		return;
 
 	r = usb_read(download_base, len);
-	if ((r < 0) || (r != len)) {
+	if ((r < 0) || ((unsigned)r != len)) {
 		fastboot_state = STATE_ERROR;
 		return;
 	}
@@ -271,12 +283,12 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-static void fastboot_command_loop(void)
+         void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
 	int r;
-	dprintf(INFO,"fastboot: processing commands\n");
-
+	//dprintf(INFO,"fastboot: processing commands\n");
+	//fastboot_sstat(1);
 again:
 	while (fastboot_state != STATE_ERROR) {
 		r = usb_read(buffer, 64);
@@ -299,10 +311,11 @@ again:
 			
 	}
 	fastboot_state = STATE_OFFLINE;
-	dprintf(INFO,"fastboot: oops!\n");
+	//dprintf(INFO,"fastboot: oops!\n");
+	//fastboot_sstat(0);
 }
 
-static int fastboot_handler(void *arg)
+int fastboot_handler(void *arg)
 {
 	for (;;) {
 		event_wait(&usb_online);
@@ -311,16 +324,21 @@ static int fastboot_handler(void *arg)
 	return 0;
 }
 
-static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
+void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 {
 	if (event == UDC_EVENT_ONLINE) {
+		//c_usb_conn = 1;
+		//fastboot_sstat(1);
 		event_signal(&usb_online, 0);
+	} else if (event == UDC_EVENT_OFFLINE) {
+		//c_usb_conn = 0;
+		//fastboot_sstat(0);
 	}
 }
 
-static struct udc_endpoint *fastboot_endpoints[2];
+         struct udc_endpoint *fastboot_endpoints[2];
 
-static struct udc_gadget fastboot_gadget = {
+struct udc_gadget fastboot_gadget = {
 	.notify		= fastboot_notify,
 	.ifc_class	= 0xff,
 	.ifc_subclass	= 0x42,
@@ -333,7 +351,7 @@ static struct udc_gadget fastboot_gadget = {
 int fastboot_init(void *base, unsigned size)
 {
 	thread_t *thr;
-	dprintf(INFO, "fastboot_init()\n");
+	//dprintf(INFO, "fastboot_init()\n");
 
 	download_base = base;
 	download_max = size;
@@ -360,7 +378,6 @@ int fastboot_init(void *base, unsigned size)
 
 	fastboot_register("getvar:", cmd_getvar);
 	fastboot_register("download:", cmd_download);
-	fastboot_publish("version", "0.5");
 
 	thr = thread_create("fastboot", fastboot_handler, 0, DEFAULT_PRIORITY, 4096);
 	thread_resume(thr);

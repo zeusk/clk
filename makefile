@@ -149,7 +149,7 @@ clean: $(EXTRA_CLEANDEPS)
 
 spotless:
 	rm -rf build-*
-
+	
 install: all
 	scp $(OUTBIN) 192.168.0.4:/tftproot
 

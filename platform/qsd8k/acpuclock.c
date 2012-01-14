@@ -76,11 +76,11 @@ void acpu_clock_init(void)
     writel(0x00600007, SCPLL_CTL);
     thread_sleep(1);
 
-    /* HOP to 768MHz */
+    /* HOP to 998MHz */
     while(readl(SCPLL_STAT) & 0x3);
     val = readl(SCPLL_CTLE);
     val &= ~(0x3F << 3);
-    val |= (0x14 << 3); // Use 0x1A instead of 0x14 for 998MHz
+    val |= (0x1A << 3); // Use 0x1A(998MHz) instead of 0x14(768MHz)
     val &= ~(0x3 << 0);
     val |= (5 << 0);  // HOP method
     writel(val, SCPLL_CTLE);

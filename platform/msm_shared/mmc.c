@@ -391,7 +391,7 @@ static unsigned int mmc_boot_decode_and_save_cid( struct mmc_boot_card* card,
     mmc_cid.pnm[6] = 0;
 
     mmc_cid.prv = UNPACK_BITS( raw_cid, 48, 8, mmc_sizeof );
-    mmc_cid.psn = UNPACK_BITS( raw_cid, 16, 32, mmc_sizeof );
+    mmc_cid.psn = UNPACK_BITS( raw_cid, 16, /*32*/16, mmc_sizeof );
     mmc_cid.month = UNPACK_BITS( raw_cid, 12, 4, mmc_sizeof );
     mmc_cid.year = UNPACK_BITS( raw_cid, 8, 4, mmc_sizeof );
 
@@ -410,7 +410,22 @@ static unsigned int mmc_boot_decode_and_save_cid( struct mmc_boot_card* card,
 
     return MMC_BOOT_E_SUCCESS;
 }
+void mmc_display_ext_csd(void)
+{
+    dprintf(ALWAYS,  "part_config: %x\n", ext_csd_buf[179] );
+    dprintf(ALWAYS,  "erase_group_def: %x\n", ext_csd_buf[175] );
+    dprintf(ALWAYS,  "user_wp: %x\n", ext_csd_buf[171] );
+}
 
+void mmc_display_csd(void)
+{
+    dprintf(ALWAYS,  "erase_grpsize: %d\n", mmc_card.csd.erase_grp_size );
+    dprintf(ALWAYS,  "erase_grpmult: %d\n", mmc_card.csd.erase_grp_mult );
+    dprintf(ALWAYS,  "wp_grpsize: %d\n", mmc_card.csd.wp_grp_size );
+    dprintf(ALWAYS,  "wp_grpen: %d\n", mmc_card.csd.wp_grp_enable );
+    dprintf(ALWAYS,  "perm_wp: %d\n", mmc_card.csd.perm_wp );
+    dprintf(ALWAYS,  "temp_wp: %d\n", mmc_card.csd.temp_wp );
+}
 /*
  * Sends specified command to a card and waits for a response.
  */
@@ -1110,7 +1125,7 @@ static unsigned int mmc_boot_send_ext_cmd (struct mmc_boot_card* card, unsigned 
                 read_count = MMC_BOOT_MCI_HFIFO_COUNT;
             }
 
-            for (int i=0; i<read_count; i++)
+            for (unsigned i=0; i<read_count; i++)
             {
                 /* FIFO contains 16 32-bit data buffer on 16 sequential addresses*/
                 *mmc_ptr = readl( MMC_BOOT_MCI_FIFO +
@@ -1705,7 +1720,7 @@ static unsigned int mmc_boot_read_from_card( struct mmc_boot_host* host,
                 read_count = MMC_BOOT_MCI_HFIFO_COUNT;
             }
 
-            for (int i=0; i<read_count; i++)
+            for (unsigned i=0; i<read_count; i++)
             {
                 /* FIFO contains 16 32-bit data buffer on 16 sequential addresses*/
                 *mmc_ptr = readl( MMC_BOOT_MCI_FIFO +
@@ -2487,7 +2502,7 @@ static unsigned int mmc_boot_read_reg(struct mmc_boot_card *card,
     unsigned int* mmc_ptr = out;
     unsigned int mmc_count = 0;
     unsigned int mmc_reg = 0;
-    unsigned int xfer_type;
+    //unsigned int xfer_type;
     unsigned int read_error;
 
     /* Set the FLOW_ENA bit of MCI_CLK register to 1 */
@@ -2544,7 +2559,7 @@ static unsigned int mmc_boot_read_reg(struct mmc_boot_card *card,
                 read_count = MMC_BOOT_MCI_HFIFO_COUNT;
             }
 
-            for (int i=0; i<read_count; i++)
+            for (unsigned i=0; i<read_count; i++)
             {
                 /* FIFO contains 16 32-bit data buffer on 16 sequential addresses*/
                 *mmc_ptr = readl( MMC_BOOT_MCI_FIFO +
@@ -2701,7 +2716,7 @@ static unsigned int mmc_boot_set_clr_power_on_wp_user(struct mmc_boot_card* card
     cmd.cmd_type = MMC_BOOT_CMD_ADDRESS;
     cmd.resp_type = MMC_BOOT_RESP_R1B;
 
-    for(int i=0;i<loop_count;i++)
+    for(unsigned int i=0;i<loop_count;i++)
     {
         /* Sending CMD28 for each WP group size
            address is in sectors already */
@@ -2747,7 +2762,7 @@ static unsigned int mmc_boot_get_wp_status (struct mmc_boot_card* card,
     unsigned int rc = MMC_BOOT_E_SUCCESS;
     memset(wp_status_buf,0, 8);
 
-    rc = mmc_boot_read_reg(card,8,CMD31_SEND_WRITE_PROT_TYPE,sector,wp_status_buf);
+    rc = mmc_boot_read_reg(card,8,CMD31_SEND_WRITE_PROT_TYPE,sector,(unsigned int *)wp_status_buf);
 
     return rc;
 }
@@ -2778,19 +2793,3 @@ void mmc_wp_test(void)
     mmc_ret = mmc_wp(0xE06000,0x5000,1);
 }
 
-void mmc_display_ext_csd(void)
-{
-    dprintf(ALWAYS,  "part_config: %x\n", ext_csd_buf[179] );
-    dprintf(ALWAYS,  "erase_group_def: %x\n", ext_csd_buf[175] );
-    dprintf(ALWAYS,  "user_wp: %x\n", ext_csd_buf[171] );
-}
-
-void mmc_display_csd(void)
-{
-    dprintf(ALWAYS,  "erase_grpsize: %d\n", mmc_card.csd.erase_grp_size );
-    dprintf(ALWAYS,  "erase_grpmult: %d\n", mmc_card.csd.erase_grp_mult );
-    dprintf(ALWAYS,  "wp_grpsize: %d\n", mmc_card.csd.wp_grp_size );
-    dprintf(ALWAYS,  "wp_grpen: %d\n", mmc_card.csd.wp_grp_enable );
-    dprintf(ALWAYS,  "perm_wp: %d\n", mmc_card.csd.perm_wp );
-    dprintf(ALWAYS,  "temp_wp: %d\n", mmc_card.csd.temp_wp );
-}

@@ -61,6 +61,11 @@ thread_t *idle_thread;
 static void thread_resched(void);
 static void idle_thread_routine(void) __NO_RETURN;
 
+#if PLATFORM_HAS_DYNAMIC_TIMER
+/* preemption timer */
+static timer_t preempt_timer;
+#endif
+
 /* run queue manipulation */
 static void insert_in_run_queue_head(thread_t *t)
 {
@@ -181,6 +186,22 @@ static void thread_cleanup_dpc(void *thread)
 	free(t);
 }
 
+void thread_kill(thread_t *thread)
+{
+	thread_t *t = (thread_t *)thread;
+#if THREAD_CHECKS
+	ASSERT(t->magic == THREAD_MAGIC);
+	ASSERT(t->state == THREAD_RUNNING);
+#endif
+	enter_critical_section();
+	t->state = THREAD_DEATH;
+	t->retcode = 0;
+	dpc_queue(thread_cleanup_dpc, (void *)t, DPC_FLAG_NORESCHED);
+	thread_resched();
+	list_delete(&t->thread_list_node);
+	exit_critical_section();
+	panic("somehow fell through thread_exit()\n");
+}
 void thread_exit(int retcode)
 {
 #if THREAD_CHECKS
@@ -394,14 +415,11 @@ static enum handler_return thread_sleep_handler(timer_t *timer, time_t now, void
 void thread_sleep(time_t delay)
 {
 	timer_t timer;
-
 #if THREAD_CHECKS
 	ASSERT(current_thread->magic == THREAD_MAGIC);
 	ASSERT(current_thread->state == THREAD_RUNNING);
 #endif
-
 	timer_initialize(&timer);
-
 	enter_critical_section();
 	timer_set_oneshot(&timer, delay, thread_sleep_handler, (void *)current_thread);
 	current_thread->state = THREAD_SLEEPING;
@@ -434,6 +452,9 @@ void thread_init_early(void)
 
 void thread_init(void)
 {
+#if PLATFORM_HAS_DYNAMIC_TIMER
+	timer_initialize(&preempt_timer);
+#endif
 }
 
 void thread_set_name(const char *name)
@@ -662,5 +683,3 @@ status_t thread_unblock_from_wait_queue(thread_t *t, bool reschedule, status_t w
 
 	return NO_ERROR;
 }
-
-

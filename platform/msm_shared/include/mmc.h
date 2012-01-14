@@ -591,6 +591,9 @@ struct mbr_entry
 #define MMC_BOOT_WR_BLOCK_LEN         512
 
 /* We have 16 32-bits FIFO registers */
+#ifdef MMC_BOOT_MCI_FIFO_COUNT
+#undef MMC_BOOT_MCI_FIFO_COUNT
+#endif
 #define MMC_BOOT_MCI_FIFO_COUNT       16
 #define MMC_BOOT_MCI_HFIFO_COUNT      ( MMC_BOOT_MCI_FIFO_COUNT / 2 )
 #define MMC_BOOT_MCI_FIFO_SIZE        ( MMC_BOOT_MCI_FIFO_COUNT * 4 )
