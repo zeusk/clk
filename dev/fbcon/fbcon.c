@@ -271,3 +271,27 @@ struct fbcon_config* fbcon_display(void)
 {
     return config;
 }
+
+static inline unsigned long pixel_to_pat( uint32_t bpp, uint32_t pixel) /* cfb & msm fb driver of linux */
+{
+	switch (config->bpp) {
+	case 1:
+		return 0xfffffffful*pixel;
+	case 2:
+		return 0x55555555ul*pixel;
+	case 4:
+		return 0x11111111ul*pixel;
+	case 8:
+		return 0x01010101ul*pixel;
+	case 12:
+		return 0x01001001ul*pixel;
+	case 16:
+		return 0x00010001ul*pixel;
+	case 24:
+		return 0x01000001ul*pixel;
+	case 32:
+		return 0x00000001ul*pixel;
+	default:
+		return 0x000000000;
+    }
+}
