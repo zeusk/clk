@@ -69,7 +69,7 @@ void selector_disable(void)
 	fbcon_set_y(active_menu->item[active_menu->selectedi].y);
 	
 	fbcon_forcetg(true);
-	fbcon_reset_colors();
+	fbcon_init_colors();
 	
 	_dputs(active_menu->item[active_menu->selectedi].mTitle);
 	
@@ -85,14 +85,46 @@ void selector_enable(void)
 	fbcon_set_x(active_menu->item[active_menu->selectedi].x);
 	fbcon_set_y(active_menu->item[active_menu->selectedi].y);
 	
-	fbcon_settg(0x001f);
-	fbcon_setfg(0xffff);
+	fbcon_set_colors(0, 1, 1, 0x0000, 0xffff, 0x001f);
 	
 	_dputs(active_menu->item[active_menu->selectedi].mTitle);
 	
-	fbcon_reset_colors();
+	fbcon_init_colors();
 	fbcon_set_y(sel_current_y_offset);
 	fbcon_set_x(sel_current_x_offset);
+}
+void draw_menu_header(void){
+	fbcon_set_colors(0, 1, 0, 0x0000, 0x02e0, 0x0000);
+	printf("\n   LEO100 HX-BC SHIP S-OFF\n   HBOOT-1.5.0.0\n   MICROP-0x30\n   SPL-CotullaHSPL 0x30\n   RADIO-\n   Jan 18 2012, 18:19:95\n\n\n");
+	fbcon_set_colors(0, 1, 1, 0x0000, 0xc3a0, 0xffff);
+	_dputs("   <VOL UP> to previous item\n   <VOL DOWN> to next item\n   <CALL> to select item\n   <BACK> to return\n\n\n");
+	if (active_menu != NULL)
+	{
+		_dputs("   ");
+		fbcon_set_colors(0, 1, 1, 0x0000, 0xffff, 0x001f);
+		_dputs(active_menu->id);
+		_dputs("\n\n\n");
+		fbcon_set_colors(0, 1, 1, 0x0000, 0x0000, 0xffff);
+	}
+}
+void draw_menu(void)
+{
+	fbcon_reset();
+	draw_menu_header();
+	for (uint8_t i = 0 ;; i++){
+		if ((strlen(active_menu->item[i].mTitle) != 0) && !(i > active_menu->maxarl) )
+		{
+			_dputs("   ");
+			if(active_menu->item[i].x == ERR_NOT_VALID)
+				active_menu->item[i].x = fbcon_get_x();
+			if(active_menu->item[i].y == ERR_NOT_VALID)
+				active_menu->item[i].y = fbcon_get_y();
+			_dputs(active_menu->item[i].mTitle);
+			_dputs("\n");
+		} else break;
+	}
+	_dputs("\n");
+	selector_enable();
 }
 static void menu_item_down()
 {
@@ -137,25 +169,86 @@ void add_menu_item(struct menu *xmenu,const char *name,const char *command)
 	xmenu->maxarl++;
 	return;
 }
-void draw_menu(void)
+int flashlight(void *arg)
 {
-	fbcon_reset();
-	draw_menu_header();
-	for (uint8_t i = 0 ;; i++){
-		if ((strlen(active_menu->item[i].mTitle) != 0) && !(i > active_menu->maxarl) )
-		{
-			_dputs("   ");
-			if(active_menu->item[i].x == ERR_NOT_VALID)
-				active_menu->item[i].x = fbcon_get_x();
-			if(active_menu->item[i].y == ERR_NOT_VALID)
-				active_menu->item[i].y = fbcon_get_y();
-			_dputs(active_menu->item[i].mTitle);
-			_dputs("\n");
-		} else break;
+	// Code picked from htc-linux.org
+	volatile unsigned *bank6_p1= (unsigned int*)(0xA9000864);
+	volatile unsigned *bank6_p2= (unsigned int*)(0xA9000814);
+	for(;;)
+	{
+		*bank6_p2=*bank6_p1 ^ 0x200000;
+		if(keys_get_state(0x123)!=0)break;
+		udelay(498);
 	}
-	_dputs("\n");
-	selector_enable();
+	thread_exit(0);
 }
+void cmd_flashlight(void)
+{
+	thread_resume((thread_t *)thread_create("Flashlight", &flashlight, NULL, HIGHEST_PRIORITY, DEFAULT_STACK_SIZE));
+}
+
+void eval_command( uint8_t stage)
+{
+	char command[CMD_SZ];
+	if (stage == 2)
+	{
+		strcpy(command, active_menu->item[active_menu->selectedi].command);
+	} else {
+		strcpy(command, active_menu->back_cmd);
+	}
+
+	if (!memcmp(command,"boot_recv", strlen(command)))
+	{
+		boot_into_recovery = 1;
+		if (boot_linux_from_flash() == -1){draw_menu();}
+		return;
+	} else if (!memcmp(command,"prnt_clrs", strlen(command))){
+		draw_menu();
+		return;	
+	} else if (!memcmp(command,"boot_nand", strlen(command))){
+		boot_into_recovery = 0;
+		if (boot_linux_from_flash() == -1){draw_menu();}
+		return;
+	}else if (!memcmp(command,"goto_rept", strlen(command))){
+		printf("\n   ERROR!: Feature not compiled");
+		return;
+	}else if (!memcmp(command,"goto_sett", strlen(command))){
+		active_menu = &sett_menu;
+		draw_menu();
+		return;
+	}else if (!memcmp(command,"goto_main", strlen(command))){
+		active_menu = &main_menu;
+		draw_menu();
+		return;
+	}else if (!memcmp(command,"acpu_ggwp", strlen(command))){
+		reboot_device(0);
+		return;
+	}else if (!memcmp(command,"acpu_bgwp", strlen(command))){
+		reboot_device(FASTBOOT_MODE);
+		return;
+	}else if (!memcmp(command,"acpu_pawn", strlen(command))){
+		shutdown();
+		return;
+	}else if (!memcmp(command,"enable_extrom", strlen(command))){
+		device_enable_extrom();
+		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
+		thread_sleep(2000);
+		reboot_device(FASTBOOT_MODE);
+		return;
+	}else if (!memcmp(command,"disable_extrom", strlen(command))){
+		device_disable_extrom();
+		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
+		thread_sleep(2000);
+		reboot_device(FASTBOOT_MODE);
+		return;
+	}else if (!memcmp(command,"init_flsh", strlen(command))){
+		cmd_flashlight();
+		return;
+	}
+	printf("HBOOT BUG: Somehow fell through eval_cmd()\n");
+	return;
+}
+
 void eval_keydown(void){
 	switch (keys[keyp]){
 		case KEY_VOLUMEUP:
@@ -238,102 +331,6 @@ int key_listener(void *arg)
 	thread_exit(0);
 	return 0;
 }
-void draw_menu_header(void){
-	fbcon_setfg(0x02E0);
-	printf("\n   LEO100 HX-BC SHIP S-OFF\n   HBOOT-1.5.0.0\n   MICROP-0x30\n   SPL-CotullaHSPL 0x30\n   RADIO-\n   Jan 18 2012, 18:19:95\n\n\n");
-	fbcon_settg(0xffff);
-	fbcon_setfg(0xC3A0);
-	_dputs("   <VOL UP> to previous item\n   <VOL DOWN> to next item\n   <CALL> to select item\n   <BACK> to return\n\n\n");
-	fbcon_setfg(0x0000);
-	if (active_menu != NULL)
-	{
-		_dputs("   ");
-		fbcon_settg(0x001f);
-		fbcon_setfg(0xffff);
-		_dputs(active_menu->MenuId);
-		_dputs("\n\n\n");
-		fbcon_settg(0xffff);
-		fbcon_setfg(0x0000);
-	}
-}
-void eval_command( uint8_t stage)
-{
-	char command[CMD_SZ];
-	if (stage == 2)
-	{
-		strcpy(command, active_menu->item[active_menu->selectedi].command);
-	} else {
-		strcpy(command, active_menu->back_cmd);
-	}
-
-	if (!memcmp(command,"boot_recv", strlen(command)))
-	{
-		boot_into_recovery = 1;
-		if (boot_linux_from_flash() == -1){draw_menu();}
-		return;
-	} else if (!memcmp(command,"prnt_clrs", strlen(command))){
-		draw_menu();
-		return;	
-	} else if (!memcmp(command,"boot_nand", strlen(command))){
-		boot_into_recovery = 0;
-		if (boot_linux_from_flash() == -1){draw_menu();}
-		return;
-	}else if (!memcmp(command,"goto_rept", strlen(command))){
-		printf("\n   ERROR!: Feature not compiled");
-		return;
-	}else if (!memcmp(command,"goto_sett", strlen(command))){
-		active_menu = &sett_menu;
-		draw_menu();
-		return;
-	}else if (!memcmp(command,"goto_main", strlen(command))){
-		active_menu = &main_menu;
-		draw_menu();
-		return;
-	}else if (!memcmp(command,"acpu_ggwp", strlen(command))){
-		reboot_device(0);
-		return;
-	}else if (!memcmp(command,"acpu_bgwp", strlen(command))){
-		reboot_device(FASTBOOT_MODE);
-		return;
-	}else if (!memcmp(command,"acpu_pawn", strlen(command))){
-		shutdown();
-		return;
-	}else if (!memcmp(command,"enable_extrom", strlen(command))){
-		dev_info_enable_extrom();
-		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
-		thread_sleep(2000);
-		reboot_device(FASTBOOT_MODE);
-		return;
-	}else if (!memcmp(command,"disable_extrom", strlen(command))){
-		dev_info_disable_extrom();
-		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
-		thread_sleep(2000);
-		reboot_device(FASTBOOT_MODE);
-		return;
-	}else if (!memcmp(command,"init_flsh", strlen(command))){
-		cmd_flashlight();
-		return;
-	}
-	printf("HBOOT BUG: Somehow fell through eval_cmd()\n");
-	return;
-}
-static int flashlight(void *arg)
-{
-	// Code picked from htc-linux.org
-	volatile unsigned *bank6_p1= (unsigned int*)(0xA9000864);
-	volatile unsigned *bank6_p2= (unsigned int*)(0xA9000814);
-	for(;;)
-	{
-		*bank6_p2=*bank6_p1 ^ 0x200000;
-		if(keys_get_state(0x123)!=0)break;
-		udelay(498);
-	}
-	thread_exit(0);
-}
-void cmd_flashlight(void)
-{
-	thread_resume((thread_t *)thread_create("Flashlight", &flashlight, NULL, HIGHEST_PRIORITY, DEFAULT_STACK_SIZE));
-}
 void menu_init(void)
 {
 	if(fbcon_display()==NULL) display_init();
@@ -355,7 +352,7 @@ void menu_init(void)
 	sett_menu.maxarl		= 0;
 	strcpy(sett_menu.id, "SETTINGS");
 
-	if (dev_inf.extrom_enabled) 
+	if (device_info.extrom_enabled) 
 		add_menu_item(&sett_menu,"ExtROM ENABLED SELECT TO DISABLE !\n","disable_extrom");
 	else
 		add_menu_item(&sett_menu,"ExtROM DISABLED SELECT TO ENABLE !\n","enable_extrom");
@@ -365,6 +362,5 @@ void menu_init(void)
 	thread_resume(thread_create("key_listener", &key_listener, 0, LOW_PRIORITY, 4096));
 	// thread_resume(thread_create("usb_listener", &usb_listener, 0, LOW_PRIORITY, 4096));
 
-	fbcon_reset();
 	draw_menu();
 }

@@ -280,6 +280,12 @@ void reboot(unsigned reboot_reason)
         for (;;) ;
 }
 
+void shutdown(void)
+{
+	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
+	for(;;);
+}
+
 /* Apps processor calls this API to tell modem processor that a PC USB
  * is connected return true if the USB HOST PC charger charging is
  * supported */

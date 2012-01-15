@@ -61,6 +61,22 @@ struct PartEntry
 	uint32_t TotalSectors;
 };
 
+static void fill_boot_reason(void)
+{
+	if(boot_reason==0xFFFFFFFF)
+	{
+		boot_reason = readl(MSM_SHARED_BASE+0xef244);
+		if(boot_reason!=2)
+		{
+			if(readl(0x2FFB0000)==(readl(0x2FFB0004)^0x004b4c63))
+			{
+				android_reboot_reason = readl(0x2FFB0000);
+				writel(0, 0x2FFB0000);
+			}
+		}
+	}
+}
+
 int find_start_block()
 {
 	unsigned page_size = flash_page_size();
@@ -134,6 +150,8 @@ void target_init(void)
 	
 	keys_init();
 	keypad_init();
+	
+	fill_boot_reason();
 
 	if ( get_boot_reason() == 2 ) 
 		boot_into_recovery = 1;
@@ -207,12 +225,6 @@ void target_init(void)
 
 struct fbcon_config* fbcon_display(void);
 
-int htcleo_fastboot_init()
-{
-	cmd_oem_register();
-	return 1;
-}
-
 void target_early_init(void)
 {
 	//cedesmith: write reset vector while we can as MPU kicks in after flash_init();
@@ -232,27 +244,13 @@ void reboot_device(unsigned reboot_reason)
 	writel(reboot_reason^0x004b4c63, 0x2FFB0004); //XOR with cLK signature
 	reboot(reboot_reason);
 }
-
 unsigned get_boot_reason(void)
 {
-	if(boot_reason==0xFFFFFFFF)
-	{
-		boot_reason = readl(MSM_SHARED_BASE+0xef244);
-		if(boot_reason!=2)
-		{
-			if(readl(0x2FFB0000)==(readl(0x2FFB0004)^0x004b4c63))
-			{
-				android_reboot_reason = readl(0x2FFB0000);
-				writel(0, 0x2FFB0000);
-			}
-		}
-	}
 	return boot_reason;
 }
 
 unsigned check_reboot_mode(void)
 {
-	get_boot_reason();
 	return android_reboot_reason;
 }
 

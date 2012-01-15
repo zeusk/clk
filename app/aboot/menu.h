@@ -49,3 +49,5 @@ struct menu sett_menu;
 struct menu rept_menu;
 struct menu cust_menu;
 struct menu *active_menu;
+
+void menu_init(void);

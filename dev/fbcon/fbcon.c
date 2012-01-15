@@ -234,15 +234,10 @@ newline:
 	else fbcon_flush();
 #endif
 }
-
-void fbcon_setup(struct fbcon_config *_config)
+void fbcon_init_colors(void)
 {
 	uint32_t bg;
 	uint32_t fg;
-	
-	ASSERT(_config);
-
-	config = _config;
 
 	switch (config->format) {
 	case FB_FORMAT_RGB565:
@@ -260,6 +255,14 @@ void fbcon_setup(struct fbcon_config *_config)
 	}
 
 	fbcon_set_colors(1,1,1,bg, fg, bg); //Background, Foreground, (Text/Pen)Ground
+}
+void fbcon_setup(struct fbcon_config *_config)
+{
+	ASSERT(_config);
+
+	config = _config;
+
+	fbcon_init_colors();
 
 	cur_pos.x = 0;
 	cur_pos.y = 0;

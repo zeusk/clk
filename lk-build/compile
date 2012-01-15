@@ -13,10 +13,10 @@ fi
 rm bin/lk.bin
 rm bin/os.nb.payload
 rm bin/os.nb
-rm bin/RUU_signed.nbh
+rm bin/LEOIMG.nbh
 
 if [ ! -f bin/nbgen ]; then
-	gcc -std=c99 nbgen.c -o bin/nbgen
+	g++ nbgen.c -o bin/nbgen
 fi
 
 cd lk
@@ -26,9 +26,9 @@ cp build-htcleo/lk.bin ../bin/
 cd ..
 
 cd bin
-chmod +x yang
-./nbgen os.nb
-./yang -F RUU_signed.nbh -f os.nb -t 0x400 -s 64 -d PB8110000 -c 11111111 -v CLK1.4 -l WWE
+chmod +x yang.exe
+./nbgen -o:os.nb -b:lk.bin -r:recovery-raw.img -p:misc=1,recovery=5,boot=5,system=220,cache=5,userdata=0
+./yang -F LEOIMG.nbh -f os.nb -t 0x400 -s 64 -d PB8110000 -c 11111111 -v CLK1.5 -l WWE
 cd ..
 
 

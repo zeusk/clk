@@ -44,9 +44,11 @@
 #include <dev/keys.h>
 #include <dev/fbcon.h>
 
-#include "recovery.h"
+#include "aboot.h"
 #include "bootimg.h"
 #include "fastboot.h"
+#include "recovery.h"
+#include "menu.h"
 
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)
@@ -65,6 +67,7 @@ static struct udc_device surf_udc_device = {
 	.version_id	= 0x0100,
 	.manufacturer	= "Google",
 	.product	= "Android",
+	.serialno    = "HT9000000000"
 };
 
 struct atag_ptbl_entry
@@ -418,36 +421,34 @@ void aboot_init(const struct app_descriptor *app)
 	if (keys_get_state(KEY_HOME) != 0)
 		boot_into_recovery = 1;
 	if (keys_get_state(KEY_BACK) != 0)
-		goto fastboot;
-	if (keys_get_state(KEY_CLEAR) != 0)
-		goto fastboot;
+		goto menu;
 
-	if (check_reboot_mode() == RECOVERY_MODE) {
+	unsigned reboot_mode = check_reboot_mode();
+	if (reboot_mode == ANDRBOOT_MODE) {
+		// DO NOTHING
+	} else if (reboot_mode == RECOVERY_MODE) {
 		boot_into_recovery = 1;
-	} else if(check_reboot_mode() == FASTBOOT_MODE) {
-		goto fastboot;
+	} else if (reboot_mode == FASTBOOT_MODE) {
+		goto menu;
+	} else if (reboot_mode == DEV_FAC_RESET) {
+		if(fbcon_display()==NULL) display_init();
+		dprintf(INFO, "FACTORY RESET DEVICE IN 5 SECONDS.\n");
+		dprintf(INFO, "TO STOP, KEEP HOME KEY PRESSED.\n");
+		for( unsigned counter = 0; counter < 125; counter++)
+		{
+			if(keys_get_state(KEY_HOME) != 0) reboot_device(ANDRBOOT_MODE);
+			thread_sleep(5);
+		}
+		flash_erase("cache");
+		flash_erase("userdata");
+		dprintf(INFO, "FACTORY RESET COMPLETE.\n");
+		mdelay(5);
+		reboot_device(ANDRBOOT_MODE);
 	}
 
 	recovery_init();
 	boot_linux_from_flash();
-
-fastboot:
-	htcleo_fastboot_init();
-
-	fastboot_register("boot", cmd_boot);
-
-	fastboot_register("flash:", cmd_flash);
-	fastboot_register("erase:", cmd_erase);
-	
-	fastboot_register("continue", cmd_continue);
-	fastboot_register("reboot", cmd_reboot);
-	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_publish("product", TARGET(BOARD));
-	fastboot_publish("kernel", "lk");
-
-	fastboot_init(target_get_scratch_address(), MEMBASE - SCRATCH_ADDR - 0x00100000);
-	udc_start();
-	target_battery_charging_enable(1, 0);
+menu:	{menu_init();}
 }
 
 APP_START(aboot)

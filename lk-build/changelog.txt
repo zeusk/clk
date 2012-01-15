@@ -1,21 +1,7 @@
 1.5
- - Add android logo from android.com
- - Add linux_8x16_font.h
- - Added support for Linux kernel fonts in lk framebuffer driver.
- - Added GUI (Graphical User Interface)
- - Added Flashlight support
- - Added partitioning support
- - Added on device paritioning support
- - Added support for device poweroff from device itself
- - Added support for "Use Last 24MB NAND"
- - Added stable CWM recovery in the NBH for those with broken USB port
- - Few cherry picks from mainline lk at newos.org and codeaurora.org
- - Fix some compile warnings
- - Fix display logo routine in CAF code
- - Integrate/Fuse Recovery with cLK .nbh for those with brocken usb port
- - More stuff i don't remember..
-1.4.0.1
- - Add versioning patch for Unified cLK/MAGLDR recovery
+  - nbgen modified to write VPTABLE and ClockworkMod Recovery image file
+  - add option to change size of partitions
+  - code to check that ROM header address is valid and get start block of VPTABLE and free ROM
 1.4
   - nbgen for making .nb file
 1.3.3
@@ -28,4 +14,6 @@
   		 dmesg - kernel debug messages
   		 smesg - spl messages
   		 pwf addr len - dump memory
-  		 set[c,w,s] addr value - set char(1byte), word(4 byes), or string
+  		 set[c,w,s] addr value - set char(1byte), word(4 byes), or string 
+  
+  
