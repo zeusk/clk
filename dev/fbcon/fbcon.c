@@ -276,7 +276,7 @@ void fbcon_setup(struct fbcon_config *_config)
 	fbcon_set_colors(bg, fg);
 	cur_pos.x = 0;
 	cur_pos.y = 0;
-	max_pos.x = config->width / (FONT_WIDTH+1);
+	max_pos.x = config->width / (FONT_WIDTH);
 	max_pos.y = (config->height - SPLASH_IMAGE_HEIGHT) / FONT_HEIGHT;
 	cleanedyourcrap();
 	fbcon_disp_logo();

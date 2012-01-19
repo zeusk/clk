@@ -365,11 +365,8 @@ void eval_command(void)
 	}
 	else if (!memcmp(command,"prnt_clrs", strlen(command)))
 	{
-        fbcon_resetdisp();
-		draw_clk_header();
-		redraw_menu();
-		selector_enable();
-    }
+	redraw_menu();
+	}
 	else if (!memcmp(command,"boot_sbot", strlen(command)))
 	{
         fbcon_resetdisp();
@@ -386,43 +383,28 @@ void eval_command(void)
     }
 	else if (!memcmp(command,"prnt_stat", strlen(command)))
 	{
-		fbcon_resetdisp();
-		draw_clk_header();
 		redraw_menu();
 		vpart_list();
-		selector_enable();
 	}
 	else if (!memcmp(command,"prnt_nand", strlen(command)))
 	{
-		fbcon_resetdisp();
-		draw_clk_header();
 		redraw_menu();
 		prnt_nand_stat();
-		selector_enable();
 	}
 	else if (!memcmp(command,"goto_rept", strlen(command)))
 	{
-		fbcon_resetdisp();
 		active_menu = &rept_menu;
-		draw_clk_header();
 		redraw_menu();
-		selector_enable();
     }
 	else if (!memcmp(command,"goto_sett", strlen(command)))
 	{
-		fbcon_resetdisp();
 		active_menu = &sett_menu;
-		draw_clk_header();
 		redraw_menu();
-		selector_enable();
     }
 	else if (!memcmp(command,"goto_main", strlen(command)))
 	{
-		fbcon_resetdisp();
 		active_menu = &main_menu;
-		draw_clk_header();
 		redraw_menu();
-		selector_enable();
     }
 	else if (!memcmp(command,"acpu_ggwp", strlen(command)))
 	{
@@ -473,10 +455,7 @@ void eval_command(void)
 
 				active_menu = &cust_menu;
 
-				fbcon_resetdisp();
-				draw_clk_header();
 				redraw_menu();
-				selector_enable();
 
 				vpart_list();
 
@@ -540,10 +519,7 @@ void eval_command(void)
 			}
 		}
 
-		fbcon_resetdisp();
-		draw_clk_header();
 		redraw_menu();
-		selector_enable();
 	}
 	else
 	{
@@ -553,11 +529,8 @@ void eval_command(void)
 
 void redraw_menu(void)
 {
-	if (didyouscroll())
-	{
-		fbcon_resetdisp();
-		draw_clk_header();
-	}
+	fbcon_resetdisp();
+	draw_clk_header();
 	for (uint8_t i = 0 ;; i++)
 	{
 		if ((strlen(active_menu->item[i].mTitle) != 0) && !(i > active_menu->maxarl))
@@ -697,10 +670,7 @@ void init_menu()
 	
 	active_menu = &main_menu;
 	thread_sleep(80);
-	fbcon_resetdisp();
-	draw_clk_header();
 	redraw_menu();
-	selector_enable();
 	start_keylistener();
 }
 
@@ -1170,7 +1140,7 @@ int boot_linux_from_flash(void)
 	else
 		cmdline = "";
 
-	strcat(cmdline," clk=1.4.0.1");
+	strcat(cmdline," clk=1.5.0.1");
 	/* TODO: create/pass atags to kernel */
 	dprintf(INFO, "cmdline = '%s'\n", cmdline);
 
@@ -1475,7 +1445,6 @@ void cmd_oem_set(const char *arg)
 void cmd_oem_cls()
 {
 	redraw_menu();
-	selector_enable();
 	fastboot_okay("");
 }
 
@@ -1566,7 +1535,7 @@ void prnt_nand_stat(void)
 		return;
 	}
 	
-	dprintf(INFO,"\n\n=================================== NAND INFO ==================================\n\n");
+	dprintf(INFO,"\n\n========================== NAND INFO =========================\n\n");
 	
 	dprintf(INFO,"  Flash block size: %i bytes\n", flash_info->block_size );
 	dprintf(INFO,"  Flash page size: %i bytes\n", flash_info->page_size );
@@ -1578,7 +1547,7 @@ void prnt_nand_stat(void)
 	dprintf(INFO,"  Usable flash size: %i blocks - %i MB\n", get_usable_flash_size(), (int)( get_usable_flash_size() / get_blk_per_mb() ) );
 	dprintf(INFO,"  ExtROM offset: 0x%x size: %i blocks - %i MB\n", get_ext_rom_offset(), get_ext_rom_size(), (int)( get_ext_rom_size() / get_blk_per_mb() ) );
 
-	dprintf(INFO,"\n\n=================================== NAND INFO ==================================\n\n");
+	dprintf(INFO,"\n\n========================== NAND INFO =========================\n\n");
 }
 
 void cmd_oem_nand_status(void)
@@ -1610,11 +1579,10 @@ void cmd_oem_part_format_all()
 	}
 	printf("Formating flash...\n");
 	
-	printf("\n==============================================================================\n\n");
+	printf("\n==============================================================\n\n");
 	
 	flash_erase(ptn);
-	
-	printf("\n==============================================================================\n\n");
+	printf("\n==============================================================\n\n");
 	
 	printf("\nFormat complete ! \nReboot device to create default partition table, or create partitions manualy!\n\n");
 	
@@ -1644,12 +1612,12 @@ void cmd_oem_part_format_vpart()
 	
 	printf("Formating vptable...\n");
 	
-	printf("\n==============================================================================\n\n");
+	printf("\n==============================================================\n\n");
 	
 	flash_erase(ptn);
 	
-	printf("\n==============================================================================\n\n");
-	
+	printf("\n==============================================================\n\n");
+
 	printf("\nFormat complete ! \nReboot device to create default partition table, or create partitions manually!\n\n");
 
 	fastboot_okay("");
@@ -1664,46 +1632,44 @@ void cmd_test()
 		printf("Test line... %i\n", i);
 	fastboot_okay("Hello!");
 	redraw_menu();
-	selector_enable();
 }
 
 void cmd_oem_help()
 {
 	fbcon_resetdisp();
 
-	printf("\n================================ FASTBOOT HELP ================================\n");
+	printf("\n======================== FASTBOOT HELP ========================\n");
 
-	printf(" fastboot oem help\n");
+	printf(" fastboot oem help");
 	printf("  - This simple help\n\n");
 	
-	printf(" fastboot oem cls\n");
+	printf(" fastboot oem cls");
 	printf("  - Clear screen\n\n");
 	
 	printf(" fastboot oem part-add name:size\n");
 	printf("  - Create new partition with given name and size (in Mb, 0 for all space)\n");
 	printf("  - example: fastboot oem part-add system:160  - this will create system partition with size 160Mb\n\n");
 	
-		
 	printf(" fastboot oem part-resize name:size\n");
 	printf("  - Resize partition with given name to new size (in Mb, 0 for all space)\n");
 	printf("  - example: fastboot oem part-resize system:150  - this will resize system partition to 150Mb\n\n");
 	
-	printf(" fastboot oem part-del name\n");
+	printf(" fastboot oem part-del name");
 	printf("  - Delete named partition\n\n");
 	
 	printf(" fastboot oem part-create-default\n");
 	printf("  - Delete curent partition table and create default one\n\n");
 	
-	printf(" fastboot oem part-read\n");
+	printf(" fastboot oem part-read");
 	printf("  - Reload partition layout from NAND\n\n");
 	
 	printf(" fastboot oem part-commit\n");
 	printf("  - Save curent layout to NAND. All changes to partition layout are tmp. until committed to nand!\n\n");
 	
-	printf(" fastboot oem part-list\n");
+	printf(" fastboot oem part-list");
 	printf("  - Display current partition layout\n\n");
 	
-	printf(" fastboot oem part-clear\n");
+	printf(" fastboot oem part-clear");
 	printf("  - Clear current partition layout\n\n");
 	
 	printf(" fastboot oem format-all\n");
