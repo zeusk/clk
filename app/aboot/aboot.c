@@ -84,9 +84,6 @@
 #define SPLASH_IMAGE_WIDTH     153
 #define SPLASH_IMAGE_HEIGHT    480
 
-#define FONT_WIDTH		5
-#define FONT_HEIGHT		12
-
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 800
 
@@ -142,7 +139,10 @@ static const char *battchg_pause = " androidboot.mode=offmode_charging";
 
 static unsigned char buf[4096]; //Equal to max-supported pagesize
 
-char amss_ver[16];
+char str_buffer[64];
+
+char spl_version[32];
+char radio_version[64];
 
 struct atag_ptbl_entry
 {
@@ -169,9 +169,6 @@ struct menu
 	int selectedi;
 	int goback;
 	
-	int top_offset;
-	int bottom_offset;
-	
 	char MenuId[80];
 	char backCommand[64];
 	char data[64];
@@ -194,74 +191,154 @@ static struct udc_device surf_udc_device =
 	.product	= "Android",
 };
 
-void update_radio_ver(void)
+char charVal(char c)
 {
-	unsigned ver_base = 0xef230;
-	// Dump AMMS version
-	*(unsigned int *) (*amss_ver + 0x0) = readl(MSM_SHARED_BASE + ver_base + 0x0);
-	*(unsigned int *) (*amss_ver + 0x4) = readl(MSM_SHARED_BASE + ver_base + 0x4);
-	*(unsigned int *) (*amss_ver + 0x8) = readl(MSM_SHARED_BASE + ver_base + 0x8);
-	*(unsigned int *) (*amss_ver + 0xc) = readl(MSM_SHARED_BASE + ver_base + 0xc);
-	amss_ver[15] = 0;
+	c&=0xf;
+	if(c<=9) return '0'+c;
+	return 'A'+(c-10);
+}
+
+void fetch_mem(char* start, int len)
+{
+	while(len>0)
+	{
+		int slen = len > 29 ? 29 : len;
+		for(int i=0; i<slen; i++)
+		{
+			str_buffer[i*2] = charVal(start[i]>>4);
+			str_buffer[i*2+1]= charVal(start[i]);
+		}
+		str_buffer[slen*2+1]=0;
+		start+=slen;
+		len-=slen;
+	}
+}
+
+int str2u(const char *x)
+{
+	while(*x==' ')x++;
+
+	unsigned base=10;
+	int sign=1;
+    unsigned n = 0;
+
+    if(strstr(x,"-")==x) { sign=-1; x++;};
+    if(strstr(x,"0x")==x) {base=16; x+=2;}
+
+    while(*x) 
+	{
+    	char d=0;
+        switch(*x) {
+        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+            d = *x - '0';
+            break;
+        case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+            d = (*x - 'a' + 10);
+            break;
+        case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+            d = (*x - 'A' + 10);
+            break;
+        default:
+            return sign*n;
+        }
+        if(d>=base) return sign*n;
+        n*=base;n+=d;
+        x++;
+    }
+
+    return sign*n;
+}
+void update_ver(uint8_t mode)
+{
+	char *ptrBuffer;
+	if (mode == (uint8_t) 1)
+	{
+		fetch_mem((char*)str2u("0x1004"), str2u("0x9"));
+		ptrBuffer = (char*)&spl_version;
+	}
+	if (mode == (uint8_t) 2)
+	{
+		char expected_byte[] = "3";
+		fetch_mem((char*)str2u("0x1EF220"), str2u("0xA"));
+		if(str_buffer[0] == expected_byte[0])    {return;}
+		ptrBuffer = (char*) &radio_version;
+	}
+	for (int i = 0; i < (int)(strlen(str_buffer) - 1); i+=2)
+	{
+		int firstvalue = str_buffer[i] - '0';
+		int secondvalue;
+		switch(str_buffer[i+1])
+		{
+			case 'A': case 'a':
+			{
+				secondvalue = 10;
+			}break;
+			case 'B': case 'b':
+			{
+				secondvalue = 11;
+			}break;
+			case 'C': case 'c':
+			{
+				secondvalue = 12;
+			}break;
+			case 'D': case 'd':
+			{
+				secondvalue = 13;
+			}break;
+			case 'E': case 'e':
+			{
+				secondvalue = 14;
+			}break;
+			case 'F': case 'f':
+			{
+				secondvalue = 15;
+			}break;
+			default:
+				secondvalue = str_buffer[i+1] - '0';
+				break;
+		}
+		int newval;
+		newval = ((16 * firstvalue) + secondvalue);
+		*ptrBuffer = (char)newval;
+		ptrBuffer++;
+	}
 	return;
-}
-
-void parse_tag_msm_wifi_from_spl(void)
-{
-	#define MSM_SPLHOOD_BASE     0xF9200000 //IOMEM(0xF9200000)
-	#define MSM_SPLHOOD_PHYS     0x0
-	#define MSM_SPLHOOD_SIZE     SZ_1M
-    uint32_t id1, id2, id3, id4, id5, id6;
-    //uint32_t id_base = 0xFC028; //real mac offset found in spl for haret.exe on WM
-	uint32_t id_base = 0xef2a0;
-    id1 = readl(MSM_SHARED_BASE + id_base + 0x0);
-    id2 = readl(MSM_SHARED_BASE + id_base + 0x1);
-    id3 = readl(MSM_SHARED_BASE + id_base + 0x2);
-    id4 = readl(MSM_SHARED_BASE + id_base + 0x3);
-    id5 = readl(MSM_SHARED_BASE + id_base + 0x4);
-    id6 = readl(MSM_SHARED_BASE + id_base + 0x5);
-	char nvs_mac_addr[32];
-	sprintf(nvs_mac_addr, "macaddr=%i:%i:%i:%i:%i:%i\n", id1 , id2 , id3 , id4 , id5 , id6 );
-    printf("\n\nDevice Real Wifi Mac Address: %s\n", nvs_mac_addr);
-    return;
-}
-
-unsigned get_radiover(void)
-{
-	unsigned radio_ver = readl(MSM_SHARED_BASE+0xef220);
-	return radio_ver;
-}
-
-unsigned get_imei(void)
-{
-	unsigned dev_imei = readl(MSM_SHARED_BASE+0xef260);
-	return dev_imei;
-}
-
-unsigned get_pid(void)
-{
-	unsigned dev_pid = readl(MSM_SHARED_BASE+0xef210);
-	return dev_pid;
 }
 
 void selector_disable(void)
 {
+	int sel_current_y_offset = fbcon_get_y_cord();
+	int sel_current_x_offset = fbcon_get_x_cord();
+	
 	fbcon_set_x_cord(active_menu->item[active_menu->selectedi].x);
 	fbcon_set_y_cord(active_menu->item[active_menu->selectedi].y);
+	
 	fbcon_forcetg(true);
 	fbcon_reset_colors_rgb555();
+	
 	_dputs(active_menu->item[active_menu->selectedi].mTitle);
+	
 	fbcon_forcetg(false);
+	fbcon_set_y_cord(sel_current_y_offset);
+	fbcon_set_x_cord(sel_current_x_offset);
 }
 
 void selector_enable(void)
 {
+	int sel_current_y_offset = fbcon_get_y_cord();
+	int sel_current_x_offset = fbcon_get_x_cord();
+	
 	fbcon_set_x_cord(active_menu->item[active_menu->selectedi].x);
 	fbcon_set_y_cord(active_menu->item[active_menu->selectedi].y);
+	
 	fbcon_settg(0x001f);
 	fbcon_setfg(0xffff);
+	
 	_dputs(active_menu->item[active_menu->selectedi].mTitle);
+	
 	fbcon_reset_colors_rgb555();
+	fbcon_set_y_cord(sel_current_y_offset);
+	fbcon_set_x_cord(sel_current_x_offset);
 }
 
 void add_menu_item(struct menu *xmenu,const char *name,const char *command);
@@ -377,10 +454,6 @@ void eval_command(void)
 	{
 		cmd_flashlight();
 	}
-	else if (!memcmp(command,"MSM_wifimac",strlen(command)))
-	{
-		parse_tag_msm_wifi_from_spl();
-	}
 	else if (!memcmp(command, "rept_", 5 ))
 	{
 		char* subCommand = command + 5;
@@ -388,8 +461,6 @@ void eval_command(void)
 		{
 			if ( !memcmp( subCommand, "commit", strlen( subCommand ) ) )
 			{
-				cust_menu.top_offset	= 0;
-				cust_menu.bottom_offset	= 0;
 				cust_menu.selectedi		= 1;	// No by default
 				cust_menu.maxarl		= 0;
 				cust_menu.goback		= 0;
@@ -413,8 +484,6 @@ void eval_command(void)
 			}
 			else
 			{
-				cust_menu.top_offset    = 0;
-				cust_menu.bottom_offset = 0;
 				cust_menu.selectedi     = 0;
 				cust_menu.maxarl		= 0;
 				cust_menu.goback		= 0;
@@ -489,20 +558,9 @@ void redraw_menu(void)
 		fbcon_resetdisp();
 		draw_clk_header();
 	}
-
-    int current_offset = fbcon_get_y_cord();
-
-    if (active_menu->top_offset < 1)
-        active_menu->top_offset = current_offset;
-    else
-        fbcon_set_y_cord(active_menu->top_offset);
-
-	if (active_menu->top_offset > 1 && active_menu->bottom_offset > 1)
-		fbcon_clear_region(active_menu->top_offset,active_menu->bottom_offset);
-		
-	for (uint8_t i=0;; i++)
+	for (uint8_t i = 0 ;; i++)
 	{
-		if ((strlen(active_menu->item[i].mTitle) != 0) && !(i >= active_menu->maxarl) )
+		if ((strlen(active_menu->item[i].mTitle) != 0) && !(i > active_menu->maxarl))
 		{
 			_dputs("   ");
 			if(active_menu->item[i].x == 0)
@@ -511,20 +569,10 @@ void redraw_menu(void)
 				active_menu->item[i].y = fbcon_get_y_cord();
 			_dputs(active_menu->item[i].mTitle);
 			_dputs("\n");
-		} 
-		else 
-			break;
+		} else break;
 	}
-
-    _dputs("\n");
-		
-	if (active_menu->bottom_offset < 1)
-		active_menu->bottom_offset = fbcon_get_y_cord();
-    else
-		fbcon_set_y_cord(active_menu->bottom_offset);
-
-    if (current_offset > fbcon_get_y_cord())
-        fbcon_set_y_cord(current_offset);	
+	_dputs("\n");
+	selector_enable();
 }
 
 static int menu_item_down()
@@ -534,9 +582,6 @@ static int menu_item_down()
 	if (didyouscroll())
 		redraw_menu();
 	
-	int current_y_offset = fbcon_get_y_cord();
-	int current_x_offset = fbcon_get_x_cord();
-	
 	selector_disable();
 	
 	if (active_menu->selectedi == (active_menu->maxarl-1))
@@ -545,9 +590,6 @@ static int menu_item_down()
 		active_menu->selectedi++;
 	
     selector_enable();
-	
-	fbcon_set_y_cord(current_y_offset);
-	fbcon_set_x_cord(current_x_offset);
 	
     thread_set_priority(DEFAULT_PRIORITY);
 	return 0;
@@ -559,10 +601,7 @@ static int menu_item_up()
 	
 	if (didyouscroll())
 		redraw_menu();
-	
-	int current_y_offset = fbcon_get_y_cord();
-	int current_x_offset = fbcon_get_x_cord();
-	
+
 	selector_disable();
 	
 	if ((active_menu->selectedi) == 0)
@@ -571,9 +610,6 @@ static int menu_item_up()
 		active_menu->selectedi--;
 	
     selector_enable();
-	
-	fbcon_set_y_cord(current_y_offset);
-	fbcon_set_x_cord(current_x_offset);
 	
 	thread_set_priority(DEFAULT_PRIORITY);
 	return 0;
@@ -599,8 +635,9 @@ void add_menu_item(struct menu *xmenu,const char *name,const char *command)
 
 void init_menu()
 {	
-	main_menu.top_offset    = 0;
-	main_menu.bottom_offset = 0;
+	update_ver(1);
+	update_ver(2);
+
 	main_menu.selectedi     = 0;
 	main_menu.maxarl		= 0;
 	main_menu.goback		= 0;
@@ -617,8 +654,6 @@ void init_menu()
 	add_menu_item(&main_menu, "REBOOT HBOOT"  , "acpu_bgwp");
 	add_menu_item(&main_menu, "POWERDOWN"     , "acpu_pawn");
 	
-	sett_menu.top_offset    = 0;
-	sett_menu.bottom_offset = 0;
 	sett_menu.selectedi     = 0;
 	sett_menu.maxarl		= 0;
 	sett_menu.goback		= 0;
@@ -631,13 +666,10 @@ void init_menu()
 	else
 		add_menu_item(&sett_menu,"ExtROM DISABLED, SELECT TO ENABLE !","enable_extrom");
 	
-	add_menu_item(&sett_menu, "PARSE_TAG_MSM_WIFI_FROM_SPL", "MSM_wifimac");
 	add_menu_item(&sett_menu, "PRINT NAND STATS", "prnt_nand");
 	add_menu_item(&sett_menu, "PRINT PART STATS", "prnt_stat");
 	add_menu_item(&sett_menu, "REPARTITION NAND", "goto_rept");
 
-	rept_menu.top_offset	= 0;
-	rept_menu.bottom_offset	= 0;
 	rept_menu.selectedi		= 0;
 	rept_menu.maxarl		= 0;
 	rept_menu.goback		= 0;
@@ -784,13 +816,13 @@ void start_keylistener(void)
 
 void draw_clk_header(void)
 {
+	update_ver(2);
 	fbcon_setfg(0x02E0);
 	printf("\n   LEO100 HX-BC SHIP S-OFF\n   HBOOT-%s\n   TOUCH PANEL-MicroP(LED) 0x05\n"
-		"   SPL-CotullaHSPL 0x30\n   RADIO-%s\n   %s\n\n\n", PSUEDO_VERSION, amss_ver, BUILD_DATE);
+		"   SPL-%s\n   RADIO-%s\n   %s\n\n\n", PSUEDO_VERSION, spl_version, radio_version, BUILD_DATE);
 	fbcon_settg(0xffff);fbcon_setfg(0xC3A0);
 	_dputs("   <VOL UP> to previous item\n   <VOL DOWN> to next item\n   <CALL> to select item\n   <BACK> to return\n\n\n");
 	fbcon_setfg(0x0000);
-
 	if (active_menu != NULL)
 	{
 		_dputs("   ");
@@ -1359,13 +1391,6 @@ void fastboot_fail(const char *reason);
 int fastboot_write(void *buf, unsigned len);
 void fastboot_register(const char *prefix, void (*handle)(const char *arg, void *data, unsigned sz));
 
-char charVal(char c)
-{
-	c&=0xf;
-	if(c<=9) return '0'+c;
-	return 'A'+(c-10);
-}
-
 void send_mem(char* start, int len)
 {
 	char response[64];
@@ -1401,41 +1426,6 @@ void cmd_oem_dmesg()
 		send_mem((char*)0x2FFC000C, *((unsigned*)0x2FFC0008));
 	}
 	fastboot_okay("");
-}
-
-int str2u(const char *x)
-{
-	while(*x==' ')x++;
-
-	unsigned base=10;
-	int sign=1;
-    unsigned n = 0;
-
-    if(strstr(x,"-")==x) { sign=-1; x++;};
-    if(strstr(x,"0x")==x) {base=16; x+=2;}
-
-    while(*x) 
-	{
-    	char d=0;
-        switch(*x) {
-        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-            d = *x - '0';
-            break;
-        case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
-            d = (*x - 'a' + 10);
-            break;
-        case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-            d = (*x - 'A' + 10);
-            break;
-        default:
-            return sign*n;
-        }
-        if(d>=base) return sign*n;
-        n*=base;n+=d;
-        x++;
-    }
-
-    return sign*n;
 }
 void cmd_oem_dumpmem(const char *arg)
 {
@@ -1824,17 +1814,6 @@ void dump_mem(char* start, int len)
 	_dputs("\n");
 }
 
-static int update_amss_str(void *arg)
-{
-	while(!(strlen(amss_ver))){update_radio_ver();}
-	fbcon_resetdisp();
-	draw_clk_header();
-	redraw_menu();
-	selector_enable();
-	thread_exit(0);
-	return 0; /* LOL, is it even possible ? */
-}
-
 void aboot_init(const struct app_descriptor *app)
 {
 	if (target_is_emmc_boot())
@@ -1869,8 +1848,6 @@ void aboot_init(const struct app_descriptor *app)
 
 	/* Couldn't Find anything to do (OR) User pressed Back Key. Load Menu */
 bmenu:
-
-	thread_resume(thread_create("amss", &update_amss_str, NULL, LOW_PRIORITY, DEFAULT_STACK_SIZE));
 
 	display_init();
 	target_init_fboot();
