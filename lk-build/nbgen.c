@@ -45,25 +45,34 @@ struct PartEntry
 	uint32_t TotalSectors;
 };
 
+#define DEV_MAGIC_1		"zeusk"
+#define DEV_MAGIC_1_SZ		4
+
+#define DEV_MAGIC_2		"rick"
+#define DEV_MAGIC_2_SZ		4
+
+#define DEV_PART_NAME_SZ	16
+#define DEV_NUM_OF_PARTS	12
+
 struct part_def
 {
-	char name[32];					// partition name (identifier in mtd device)
-	short size __attribute__ ((aligned(4)));	// size in blocks 1Mb = 8 Blocks
-	bool asize __attribute__ ((aligned(4)));	// auto-size and use all available space 1=yes 0=no
+	char name[DEV_PART_NAME_SZ];
+	short size __attribute__ ((aligned(4)));
+	short asize __attribute__ ((aligned(4)));
 };
 
-struct vpartitions
+struct device_info
 {
-	char tag[7] __attribute__ ((aligned(4)));
-	struct part_def pdef[12];
-	short extrom_enabled __attribute__ ((aligned(4)));
+	char ptable_magic_1[DEV_MAGIC_1_SZ] __attribute__ ((aligned(4)));;
+	struct part_def partition[DEV_NUM_OF_PARTS];
+	short extrom_enabled __attribute__ ((aligned(4)));;
+	char ptable_magic_2[DEV_MAGIC_2_SZ] __attribute__ ((aligned(4)));;
 };
 
 int					noParts;
-struct vpartitions  vparts;
+struct device_info device_info_t;
 struct NbgData		data;
 
-#define TAG_VPTABLE		"VPTABLE"
 #define PART_DEFAULT	"misc=1,recovery=5,boot=5,system=150,cache=5,userdata=0"
 
 int Blocks(size_t bytes)
@@ -97,9 +106,9 @@ int FillRecoveryPart(const char* recoveryFile)
 	}
 
 	// Validate partition count
-	if ( noParts >= ARRAYSIZE( vparts.pdef ) )
+	if ( noParts >= ARRAYSIZE( device_info_t.partition ) )
 	{
-		fprintf( stderr, "Too many partitions, max=%d\n", ARRAYSIZE( vparts.pdef ) );
+		fprintf( stderr, "Too many partitions, max=%d\n", ARRAYSIZE( device_info_t.partition ) );
 		return -1;
 	}
 
@@ -107,8 +116,9 @@ int FillRecoveryPart(const char* recoveryFile)
 
 	// Set recovery partition, should be the first one, right after partition layout
 	// in order to keep the NBH file at a minimum size
-	strcpy( vparts.pdef[noParts].name, "recovery" );
-	vparts.pdef[noParts].size = size;
+
+	strcpy( device_info_t.partition[noParts].name, "recovery" );
+	device_info_t.partition[noParts].size = size;
 
 	fprintf( stderr, "Recovery partition=%s, blocks=%d, size=%d MB\n", recoveryFile, size, BlocksToMB( size ) );
 
@@ -142,14 +152,14 @@ int FillPartLayout(const char* partLayout)
 		int idxPart;
 		for ( idxPart = 0; idxPart < noParts; idxPart++ )
 		{
-			if ( strcmp( vparts.pdef[idxPart].name, sname ) == 0 )
+			if ( strcmp( device_info_t.partition[idxPart].name, sname ) == 0 )
 				break;
 		}
 
 		// Make sure to not overlap partition array
-		if ( idxPart >= ARRAYSIZE( vparts.pdef ) )
+		if ( idxPart >= ARRAYSIZE( device_info_t.partition ) )
 		{
-			fprintf( stderr, "Too many partitions, max=%d\n", ARRAYSIZE( vparts.pdef ) );
+			fprintf( stderr, "Too many partitions, max=%d\n", ARRAYSIZE( device_info_t.partition ) );
 			return -1;
 		}
 
@@ -157,13 +167,13 @@ int FillPartLayout(const char* partLayout)
 		if ( idxPart >= noParts )
 		{
 			// Set new partition name and increment no of parts
-			strcpy( vparts.pdef[idxPart].name, sname );
+			strcpy( device_info_t.partition[idxPart].name, sname );
 			noParts++;
 		}
 
 		// Partition data
-		if ( vparts.pdef[idxPart].size < size )
-			vparts.pdef[idxPart].size	= size;
+		if ( device_info_t.partition[idxPart].size < size )
+			device_info_t.partition[idxPart].size	= size;
 
 		// Look for next partition
 		sname = strtok( NULL, "=" );
@@ -175,10 +185,10 @@ int FillPartLayout(const char* partLayout)
 	int varCount = 0;
 	for ( int i = 0; i < noParts; i++ )
 	{
-		vparts.pdef[i].asize = ( vparts.pdef[i].size == 0 );
-		varCount += ( vparts.pdef[i].asize != 0 );
-		fprintf( stderr, "Partition=%s, blocks=%d, size=%d MB\n", vparts.pdef[i].name, 
-			vparts.pdef[i].size, BlocksToMB( vparts.pdef[i].size ) );
+		device_info_t.partition[i].asize = ( device_info_t.partition[i].size == 0 );
+		varCount += ( device_info_t.partition[i].asize != 0 );
+		fprintf( stderr, "Partition=%s, blocks=%d, size=%d MB\n", device_info_t.partition[i].name, 
+			device_info_t.partition[i].size, BlocksToMB( device_info_t.partition[i].size ) );
 	}
 
 	// Validate number of variable partitions (max one allowed)
@@ -473,10 +483,12 @@ int main(int argc, char* argv[])
 	// Create partition layout
 
 	noParts = 0;
-	memset( &vparts, 0, sizeof( vparts ) );
+	memset( &device_info_t, 0, sizeof( device_info_t ) );
 
-	strcpy( vparts.tag, TAG_VPTABLE );
-	vparts.extrom_enabled = extRom;
+	strcpy( device_info_t.ptable_magic_1, DEV_MAGIC_1 );
+	strcpy( device_info_t.ptable_magic_2, DEV_MAGIC_2 );
+
+	device_info_t.extrom_enabled = extRom;
 
 	// Recovery partition
 	if ( FillRecoveryPart( recoveryFile ) == -1 )
@@ -503,8 +515,8 @@ int main(int argc, char* argv[])
 		return 2;
 
 	// Partition image
-	fprintf( stderr, "PTABLE size=%d bytes\n", sizeof( vparts ) );
-	if ( AddPartData( &vparts, sizeof( vparts ) ) == -1 )
+	fprintf( stderr, "PTABLE size=%d bytes\n", sizeof( device_info_t ) );
+	if ( AddPartData( &device_info_t, sizeof( device_info_t ) ) == -1 )
 		return 2;
 
 	// Recovery image

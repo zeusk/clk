@@ -26,7 +26,7 @@ cp build-htcleo/lk.bin ../bin/
 cd ..
 
 cd bin
-chmod +x yang.exe
+chmod +x yang
 ./nbgen -o:os.nb -b:lk.bin -r:recovery-raw.img -p:misc=1,recovery=5,boot=5,system=220,cache=5,userdata=0
 ./yang -F LEOIMG.nbh -f os.nb -t 0x400 -s 64 -d PB8110000 -c 11111111 -v CLK1.5 -l WWE
 cd ..
