@@ -860,7 +860,7 @@ void draw_clk_header(void)
 
 void cmd_powerdown(const char *arg, void *data, unsigned sz)
 {
-	dprintf(INFO, "Powering down the device\n");
+	printf( "Powering down the device\n");
 	fastboot_okay("Device Powering Down");
 	shutdown();
 	thread_exit(0);
@@ -980,9 +980,9 @@ void boot_linux(void *kernel, unsigned *tags,
 	*ptr++ = 0;
 	*ptr++ = 0;
 
-	dprintf(INFO, "booting Linux @ %p, ramdisk @ %p (%d)\n", kernel, ramdisk, ramdisk_size);
+	printf( "booting Linux @ %p, ramdisk @ %p (%d)\n", kernel, ramdisk, ramdisk_size);
 	if (cmdline)
-		dprintf(INFO, "cmdline: %s\n", cmdline);
+		printf( "cmdline: %s\n", cmdline);
 
 	enter_critical_section();
 	platform_uninit_timer();
@@ -1015,7 +1015,7 @@ int boot_linux_from_flash(void)
 	if (ptable == NULL)
 	{
 		dprintf(CRITICAL, "ERROR: Partition table not found\n");
-		return -1;
+		goto failed;
 	}
 
 	/* Fixed Hang after failed boot */
@@ -1030,57 +1030,57 @@ int boot_linux_from_flash(void)
 		{
 			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
 			boot_into_recovery=0;
-			return -1;
+			goto failed;
 		}
 	}
 	else if (boot_into_sboot)
 	{ 
 		//Boot from sboot partition
-		dprintf(INFO,"\n\nBooting from sboot partition ...\n\n");
+		printf("\n\nBooting from sboot partition ...\n\n");
 		ptn = ptable_find(ptable,"sboot");
 		if (ptn == NULL)
 		{
 			dprintf(CRITICAL,"ERROR: No sboot partition found!\n");
 			boot_into_sboot=0;
-			return -1;
+			goto failed;
 		}
 	}
 	else 
 	{ 
 		// Standard boot
-		dprintf(INFO,"\n\nNormal boot ...\n\n");
+		printf("\n\nNormal boot ...\n\n");
 		ptn = ptable_find(ptable, "boot");
 		if (ptn == NULL)
 		{
 			dprintf(CRITICAL, "ERROR: No boot partition found\n");
-			return -1;
+			goto failed;
 		}
 	}
 
 	if (flash_read(ptn, offset, buf, page_size))
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
-		return -1;
+		goto failed;
 	}
 	offset += page_size;
 
 	if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE))
 	{
 		dprintf(CRITICAL, "ERROR: Invaled boot image heador\n");
-		return -1;
+		goto failed;
 	}
 
 	if (hdr->page_size != page_size)
 	{
 		dprintf(CRITICAL, "ERROR: Invalid boot image pagesize. Device pagesize: %d, Image pagesize: %d\n",page_size,hdr->page_size);
-		return -1;
+		goto failed;
 	}
 
 	n = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
 	if (flash_read(ptn, offset, (void *)hdr->kernel_addr, n))
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read kernel image\n");
-		return -1;
+		goto failed;
 	}
 	offset += n;
 
@@ -1088,26 +1088,33 @@ int boot_linux_from_flash(void)
 	if (flash_read(ptn, offset, (void *)hdr->ramdisk_addr, n))
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read ramdisk image\n");
-		return -1;
+		goto failed;
 	}
 	offset += n;
 
-	dprintf(INFO, "kernel  @ %x (%d bytes)\n", hdr->kernel_addr, hdr->kernel_size);
-	dprintf(INFO, "ramdisk @ %x (%d bytes)\n", hdr->ramdisk_addr, hdr->ramdisk_size);
+	printf( "kernel  @ %x (%d bytes)\n", hdr->kernel_addr, hdr->kernel_size);
+	printf( "ramdisk @ %x (%d bytes)\n", hdr->ramdisk_addr, hdr->ramdisk_size);
 
 	if (hdr->cmdline[0])
 		cmdline = (char*) hdr->cmdline;
 	else
 		cmdline = "";
 
-	strcat(cmdline," clk=1.5.0.1");
-	dprintf(INFO, "cmdline = '%s'\n", cmdline);
+	strcat(cmdline," clk=1.5.0.0");
+	printf( "cmdline = '%s'\n", cmdline);
 
-	dprintf(INFO, "Booting Linux ...\n");
+	printf( "Booting Linux ...\n");
 	boot_linux((void *)hdr->kernel_addr, (void *)TAGS_ADDR,
 		   (const char *) cmdline, board_machtype(),
 		   (void *)hdr->ramdisk_addr, hdr->ramdisk_size);
 	return 0;
+failed:
+	{
+		printf("\n\n   AN IRRECOVERABLE ERROR OCCURED, REBOOTING TO BOOTLOADER.");
+		thread_sleep(800);
+		reboot_device(FASTBOOT_MODE);
+		return -1;
+	}
 }
 
 void cmd_boot(const char *arg, void *data, unsigned sz)
@@ -1210,14 +1217,14 @@ void cmd_flash(const char *arg, void *data, unsigned sz)
 	else
 		sz = ROUND_TO_PAGE(sz, page_mask);
 
-	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
+	printf( "writing %d bytes to '%s'\n", sz, ptn->name);
 	if (flash_write(ptn, extra, data, sz))
 	{
 		fastboot_fail("flash write failure");
 		return;
 	}
 
-	dprintf(INFO, "partition '%s' updated\n", ptn->name);
+	printf( "partition '%s' updated\n", ptn->name);
 	fastboot_okay("Partition Update Successful.");
 }
 
@@ -1231,14 +1238,14 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 
 void cmd_reboot(const char *arg, void *data, unsigned sz)
 {
-	dprintf(INFO, "rebooting the device\n");
+	printf( "rebooting the device\n");
 	fastboot_okay("Rebooting Device.");
 	reboot_device(0);
 }
 
 void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
 {
-	dprintf(INFO, "rebooting the device\n");
+	printf( "rebooting the device\n");
 	fastboot_okay("Rebooting Device to HBOOT.");
 	reboot_device(FASTBOOT_MODE);
 }
@@ -1417,18 +1424,18 @@ void prnt_nand_stat(void)
 		return;
 	}
 	
-	dprintf(INFO,"\n========================= NAND INFO ========================\n\n");
+	printf("\n========================= NAND INFO ========================\n\n");
 	
-	dprintf(INFO,"  Flash block size: %i bytes\n", flash_info->block_size );
-	dprintf(INFO,"  Flash page size: %i bytes\n", flash_info->page_size );
-	dprintf(INFO,"  Flash spare size: %i\n", flash_info->spare_size );
-	dprintf(INFO,"  Flash total size: %i blocks - %i MB\n", flash_info->num_blocks, (int)( flash_info->num_blocks / get_blk_per_mb() ) );
-	dprintf(INFO,"  ROM (0x400) offset: 0x%x\n", HTCLEO_ROM_OFFSET );
-	dprintf(INFO,"  VPTABLE offset: 0x%x size: %i blocks\n", ptn->start, ptn->length );
-	dprintf(INFO,"  PTABLE offset: 0x%x size: %i blocks - %i MB\n", get_flash_offset(), get_full_flash_size(), (int)( get_full_flash_size() / get_blk_per_mb() ) );
-	dprintf(INFO,"  Usable flash size: %i blocks - %i MB\n", get_usable_flash_size(), (int)( get_usable_flash_size() / get_blk_per_mb() ) );
-	dprintf(INFO,"  ExtROM offset: 0x%x size: %i blocks - %i MB\n", get_ext_rom_offset(), get_ext_rom_size(), (int)( get_ext_rom_size() / get_blk_per_mb() ) );
-	dprintf(INFO,"\n========================= NAND INFO ========================\n");
+	printf("  Flash block size: %i bytes\n", flash_info->block_size );
+	printf("  Flash page size: %i bytes\n", flash_info->page_size );
+	printf("  Flash spare size: %i\n", flash_info->spare_size );
+	printf("  Flash total size: %i blocks - %i MB\n", flash_info->num_blocks, (int)( flash_info->num_blocks / get_blk_per_mb() ) );
+	printf("  ROM (0x400) offset: 0x%x\n", HTCLEO_ROM_OFFSET );
+	printf("  VPTABLE offset: 0x%x size: %i blocks\n", ptn->start, ptn->length );
+	printf("  PTABLE offset: 0x%x size: %i blocks - %i MB\n", get_flash_offset(), get_full_flash_size(), (int)( get_full_flash_size() / get_blk_per_mb() ) );
+	printf("  Usable flash size: %i blocks - %i MB\n", get_usable_flash_size(), (int)( get_usable_flash_size() / get_blk_per_mb() ) );
+	printf("  ExtROM offset: 0x%x size: %i blocks - %i MB\n", get_ext_rom_offset(), get_ext_rom_size(), (int)( get_ext_rom_size() / get_blk_per_mb() ) );
+	printf("\n========================= NAND INFO ========================\n");
 }
 
 void cmd_oem_nand_status(void)
