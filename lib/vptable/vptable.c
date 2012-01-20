@@ -400,7 +400,7 @@ void vpart_clear()
 // Print current ptable
 void vpart_list()
 {
-	printf( "\n\n================================ PARTITION TABLE ===============================\n\n" );
+	printf( "\n====================== PARTITION TABLE =====================\n\n" );
 
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
@@ -411,7 +411,7 @@ void vpart_list()
 			vparts.pdef[i].asize, vparts.pdef[i].size, vparts.pdef[i].size / get_blk_per_mb() );
 	}
 
-	printf( "\n\n================================ PARTITION TABLE ===============================\n\n" );
+	printf( "\n====================== PARTITION TABLE =====================\n\n" );
 }
 
 // Create default partition layout

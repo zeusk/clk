@@ -139,10 +139,10 @@ static const char *battchg_pause = " androidboot.mode=offmode_charging";
 
 static unsigned char buf[4096]; //Equal to max-supported pagesize
 
-char str_buffer[64];
-
-char spl_version[32];
-char radio_version[64];
+char spl_version[24];
+char splBuffer[24];
+char radio_version[25];
+char radBuffer[25];
 
 struct atag_ptbl_entry
 {
@@ -198,22 +198,6 @@ char charVal(char c)
 	return 'A'+(c-10);
 }
 
-void fetch_mem(char* start, int len)
-{
-	while(len>0)
-	{
-		int slen = len > 29 ? 29 : len;
-		for(int i=0; i<slen; i++)
-		{
-			str_buffer[i*2] = charVal(start[i]>>4);
-			str_buffer[i*2+1]= charVal(start[i]);
-		}
-		str_buffer[slen*2+1]=0;
-		start+=slen;
-		len-=slen;
-	}
-}
-
 int str2u(const char *x)
 {
 	while(*x==' ')x++;
@@ -240,34 +224,111 @@ int str2u(const char *x)
             break;
         default:
             return sign*n;
-        }
+    	}
         if(d>=base) return sign*n;
         n*=base;n+=d;
         x++;
-    }
+	}
 
     return sign*n;
 }
-void update_ver(uint8_t mode)
+
+/* koko : Method to get radio version */
+void get_radio_ver(char* start, int len)
 {
-	char *ptrBuffer;
-	if (mode == (uint8_t) 1)
+	while(len>0)
 	{
-		fetch_mem((char*)str2u("0x1004"), str2u("0x9"));
-		ptrBuffer = (char*)&spl_version;
+		int slen = len > 29 ? 29 : len;
+		for(int i=0; i<slen; i++)
+		{
+			radBuffer[i*2] = charVal(start[i]>>4);
+			radBuffer[i*2+1]= charVal(start[i]);
+		}
+		radBuffer[slen*2+1]=0;
+		start+=slen;
+		len-=slen;
 	}
-	if (mode == (uint8_t) 2)
+}
+
+void update_radio_ver(void)
+{
+	get_radio_ver((char*)str2u("0x1EF220"), str2u("0xA"));
+	/* koko : if radio version is not read 1st char won't be '3' so return */
+	char expected_byte[] = "3";
+	if(radBuffer[0] != expected_byte[0]){return;}
+
+	//hex2ansii
+	char *ptrBuffer = (char*)&radio_version;
+	for (int i = 0; i < (int)(strlen(radBuffer) - 1); i+=2)
 	{
-		char expected_byte[] = "3";
-		fetch_mem((char*)str2u("0x1EF220"), str2u("0xA"));
-		if(str_buffer[0] == expected_byte[0])    {return;}
-		ptrBuffer = (char*) &radio_version;
-	}
-	for (int i = 0; i < (int)(strlen(str_buffer) - 1); i+=2)
-	{
-		int firstvalue = str_buffer[i] - '0';
+		int firstvalue = radBuffer[i] - '0';
 		int secondvalue;
-		switch(str_buffer[i+1])
+		switch(radBuffer[i+1])
+		{
+			case 'A': case 'a':
+			{
+				secondvalue = 10;
+			}break;
+			case 'B': case 'b':
+			{
+				secondvalue = 11;
+			}break;
+			case 'C': case 'c':
+			{
+				secondvalue = 12;
+			}break;
+			case 'D': case 'd':
+			{
+				secondvalue = 13;
+			}break;
+			case 'E': case 'e':
+			{
+				secondvalue = 14;
+			}break;
+			case 'F': case 'f':
+			{
+				secondvalue = 15;
+			}break;
+			default: 
+				secondvalue = radBuffer[i+1] - '0';
+				break;
+		}
+		int newval;
+		newval = ((16 * firstvalue) + secondvalue);
+		*ptrBuffer = (char)(newval);
+		ptrBuffer++;
+	}
+	return;
+}
+
+/* koko : Method to get spl version */
+void get_spl_ver(char* start, int len)
+{
+	while(len>0)
+	{
+		int slen = len > 29 ? 29 : len;
+		for(int i=0; i<slen; i++)
+		{
+			splBuffer[i*2] = charVal(start[i]>>4);
+			splBuffer[i*2+1]= charVal(start[i]);
+		}
+		splBuffer[slen*2+1]=0;
+		start+=slen;
+		len-=slen;
+	}
+}
+
+void update_spl_ver(void)
+{
+	get_spl_ver((char*)str2u("0x1004"), str2u("0x9"));
+
+	//hex2ansii
+	char *ptrBuffer = (char*)&spl_version;
+	for (int i = 0; i < (int)(strlen(splBuffer) - 1); i+=2)
+	{
+		int firstvalue = splBuffer[i] - '0';
+		int secondvalue;
+		switch(splBuffer[i+1])
 		{
 			case 'A': case 'a':
 			{
@@ -294,7 +355,7 @@ void update_ver(uint8_t mode)
 				secondvalue = 15;
 			}break;
 			default:
-				secondvalue = str_buffer[i+1] - '0';
+				secondvalue = splBuffer[i+1] - '0';
 				break;
 		}
 		int newval;
@@ -373,14 +434,14 @@ void eval_command(void)
         boot_into_sboot = 1;
         boot_into_recovery = 0;
         boot_linux_from_flash();
-    }
+	}
 	else if (!memcmp(command,"boot_nand", strlen(command)))
 	{
         fbcon_resetdisp();
         boot_into_sboot = 0;
         boot_into_recovery = 0;
         boot_linux_from_flash();
-    }
+	}
 	else if (!memcmp(command,"prnt_stat", strlen(command)))
 	{
 		redraw_menu();
@@ -395,17 +456,17 @@ void eval_command(void)
 	{
 		active_menu = &rept_menu;
 		redraw_menu();
-    }
+	}
 	else if (!memcmp(command,"goto_sett", strlen(command)))
 	{
 		active_menu = &sett_menu;
 		redraw_menu();
-    }
+	}
 	else if (!memcmp(command,"goto_main", strlen(command)))
 	{
 		active_menu = &main_menu;
 		redraw_menu();
-    }
+	}
 	else if (!memcmp(command,"acpu_ggwp", strlen(command)))
 	{
         reboot_device(0);
@@ -413,7 +474,7 @@ void eval_command(void)
 	else if (!memcmp(command,"acpu_bgwp", strlen(command)))
 	{
 		reboot_device(FASTBOOT_MODE);
-    }
+	}
 	else if (!memcmp(command,"acpu_pawn", strlen(command)))
 	{
         shutdown();
@@ -424,14 +485,14 @@ void eval_command(void)
 		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
 		thread_sleep(2000);
 		reboot_device(FASTBOOT_MODE);
-    }
+	}
 	else if (!memcmp(command,"disable_extrom", strlen(command)))
 	{
 		vpart_disable_extrom();
 		printf("Will Auto-Reboot in 2 Seconds for changes to take place.");
 		thread_sleep(2000);
 		reboot_device(FASTBOOT_MODE);
-    }
+	}
 	else if (!memcmp(command,"init_flsh", strlen(command)))
 	{
 		cmd_flashlight();
@@ -605,12 +666,8 @@ void add_menu_item(struct menu *xmenu,const char *name,const char *command)
 	xmenu->maxarl++;
 	return;
 }
-
 void init_menu()
-{	
-	update_ver(1);
-	update_ver(2);
-
+{
 	main_menu.selectedi     = 0;
 	main_menu.maxarl		= 0;
 	main_menu.goback		= 0;
@@ -700,7 +757,7 @@ void eval_keydown(void)
 			active_menu->goback = 1;
 			eval_command();
 			break;
-    }
+	}
 }
 
 void eval_keyup(void)
@@ -720,7 +777,7 @@ void eval_keyup(void)
 			break;
         case KEY_BACK:
 			break;
-    }
+	}
 }
 
 int key_repeater(void *arg)
@@ -756,7 +813,6 @@ int key_repeater(void *arg)
 	thread_exit(0);
 	return 0;
 }
-
 int key_listener(void *arg)
 {
 	for (;;)
@@ -786,7 +842,6 @@ void start_keylistener(void)
 
 void draw_clk_header(void)
 {
-	update_ver(2);
 	fbcon_setfg(0x02E0);
 	printf("\n   LEO100 HX-BC SHIP S-OFF\n   HBOOT-%s\n   TOUCH PANEL-MicroP(LED) 0x05\n"
 		"   SPL-%s\n   RADIO-%s\n   %s\n\n\n", PSUEDO_VERSION, spl_version, radio_version, BUILD_DATE);
@@ -947,91 +1002,6 @@ unsigned page_mask = 0;
 
 #define ROUND_TO_PAGE(x,y) (((x) + (y)) & (~(y)))
 
-/*
-int boot_linux_from_mmc(void)
-{
-	struct boot_img_hdr *hdr = (void*) buf;
-	struct boot_img_hdr *uhdr;
-	unsigned offset = 0;
-	unsigned long long ptn = 0;
-	unsigned n = 0;
-	const char *cmdline;
-
-	uhdr = (struct boot_img_hdr *)EMMC_BOOT_IMG_HEADER_ADDR;
-	if (!memcmp(uhdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE))
-	{
-		dprintf(INFO, "Unified boot method!\n");
-		hdr = uhdr;
-		goto unified_boot;
-	}
-	if(!boot_into_recovery)
-	{
-		ptn = mmc_ptn_offset("boot");
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No boot partition found\n");
-			return -1;
-		}
-	} else {
-		ptn = mmc_ptn_offset("recovery");
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
-            return -1;
-		}
-	}
-
-	if (mmc_read(ptn + offset, (unsigned int *)buf, page_size)) {
-		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
-        return -1;
-	}
-
-	if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-		dprintf(CRITICAL, "ERROR: Invaled boot image header\n");
-        return -1;
-	}
-
-	if (hdr->page_size && (hdr->page_size != page_size)) {
-		page_size = hdr->page_size;
-		page_mask = page_size - 1;
-	}
-	offset += page_size;
-
-	n = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
-	if (mmc_read(ptn + offset, (void *)hdr->kernel_addr, n)) {
-		dprintf(CRITICAL, "ERROR: Cannot read kernel image\n");
-        return -1;
-	}
-	offset += n;
-
-	n = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
-	if (mmc_read(ptn + offset, (void *)hdr->ramdisk_addr, n)) {
-		dprintf(CRITICAL, "ERROR: Cannot read ramdisk image\n");
-        return -1;
-	}
-	offset += n;
-
-unified_boot:
-	dprintf(INFO, "\nkernel @ %x (%d bytes)\n", hdr->kernel_addr, hdr->kernel_size);
-	dprintf(INFO, "ramdisk @ %x (%d bytes)\n", hdr->ramdisk_addr, hdr->ramdisk_size);
-	if(hdr->cmdline[0]) {
-		cmdline = (char*) hdr->cmdline;
-	} else {
-		cmdline = DEFAULT_CMDLINE;
-	}
-	strcat(cmdline," clk=");
-	strcat(cmdline,cLK_version);
-
-	dprintf(INFO, "cmdline = '%s'\n", cmdline);
-
-	dprintf(INFO, "\nBooting Linux\n");
-	
-	boot_linux((void *)hdr->kernel_addr, (void *)TAGS_ADDR,
-		(const char *)cmdline, board_machtype(),
-		(void *)hdr->ramdisk_addr, hdr->ramdisk_size);
-	
-	return 0;
-}
-*/
-
 int boot_linux_from_flash(void)
 {
 	struct boot_img_hdr *hdr = (void*) buf;
@@ -1041,16 +1011,6 @@ int boot_linux_from_flash(void)
 	unsigned offset = 0;
 	char *cmdline;
 
-/*
-	if (target_is_emmc_boot()) {
-		hdr = (struct boot_img_hdr *)EMMC_BOOT_IMG_HEADER_ADDR;
-		if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-			dprintf(CRITICAL, "ERROR: Invalid boot image header\n");
-			return -1;
-		}
-		goto continue_boot;
-	}
-*/
 	ptable = flash_get_ptable();
 	if (ptable == NULL)
 	{
@@ -1065,13 +1025,13 @@ int boot_linux_from_flash(void)
 		boot_into_sboot = 0;
 		dprintf(ALWAYS,"\n\nBooting to recovery ...\n\n");
 		
-        ptn = ptable_find(ptable, "recovery");
-        if (ptn == NULL)
+		ptn = ptable_find(ptable, "recovery");
+		if (ptn == NULL)
 		{
-	        dprintf(CRITICAL, "ERROR: No recovery partition found\n");
+			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
 			boot_into_recovery=0;
-	        return -1;
-        }
+			return -1;
+		}
 	}
 	else if (boot_into_sboot)
 	{ 
@@ -1089,12 +1049,12 @@ int boot_linux_from_flash(void)
 	{ 
 		// Standard boot
 		dprintf(INFO,"\n\nNormal boot ...\n\n");
-        ptn = ptable_find(ptable, "boot");
-        if (ptn == NULL)
+		ptn = ptable_find(ptable, "boot");
+		if (ptn == NULL)
 		{
-	        dprintf(CRITICAL, "ERROR: No boot partition found\n");
-	        return -1;
-        }
+			dprintf(CRITICAL, "ERROR: No boot partition found\n");
+			return -1;
+		}
 	}
 
 	if (flash_read(ptn, offset, buf, page_size))
@@ -1141,7 +1101,6 @@ int boot_linux_from_flash(void)
 		cmdline = "";
 
 	strcat(cmdline," clk=1.5.0.1");
-	/* TODO: create/pass atags to kernel */
 	dprintf(INFO, "cmdline = '%s'\n", cmdline);
 
 	dprintf(INFO, "Booting Linux ...\n");
@@ -1177,12 +1136,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	kernel_actual = ROUND_TO_PAGE(hdr.kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr.ramdisk_size, page_mask);
-
-	//cedesmith: this will prevent lk booting lk.bin 
-	//if (page_size + kernel_actual + ramdisk_actual < sz) {
-	//	fastboot_fail("incomplete bootimage");
-	//	return;
-	//}
 
 	memmove((void*) KERNEL_ADDR, ptr + page_size, hdr.kernel_size);
 	memmove((void*) RAMDISK_ADDR, ptr + page_size + kernel_actual, hdr.ramdisk_size);
@@ -1221,65 +1174,6 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 		return;
 	}
 	fastboot_okay("Partition Erased successfully");
-}
-
-void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
-{
-	unsigned long long ptn = 0;
-	unsigned int out[512] = {0};
-
-	ptn = mmc_ptn_offset((unsigned char *)arg);
-	if(ptn == 0)
-	{
-		fastboot_fail("partition table doesn't exist");
-		return;
-	}
-
-	/* Simple inefficient version of erase. Just writing 0 in first block */
-	if (mmc_write(ptn , 512, (unsigned int *)out))
-	{
-		fastboot_fail("failed to erase partition");
-		return;
-	}
-	fastboot_okay("MMC erased successfully.");
-}
-
-void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
-{
-	unsigned long long ptn = 0;
-	unsigned long long size = 0;
-
-	ptn = mmc_ptn_offset((unsigned char *)arg);
-	if(ptn == 0)
-	{
-		fastboot_fail("partition table doesn't exist");
-		return;
-	}
-
-	if (!strcmp(arg, "boot") || !strcmp(arg, "recovery"))
-	{
-		if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE))
-		{
-			fastboot_fail("image is not a boot image");
-			return;
-		}
-	}
-
- 	size = mmc_ptn_size((unsigned char *)arg);
-	if (ROUND_TO_PAGE(sz,511) > size)
-	{
- 		fastboot_fail("size too large");
- 		return;
- 	}
-
-	if (mmc_write(ptn , sz, (unsigned int *)data))
-	{
-		fastboot_fail("flash write failure");
-		return;
-	}
-
-	fastboot_okay("MMC Partition Update successful");
-	return;
 }
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
@@ -1332,14 +1226,7 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 	fastboot_okay("Initiating normal Routine.");
 	target_battery_charging_enable(0, 1);
 	udc_stop();
-	if (target_is_emmc_boot())
-	{
-		//boot_linux_from_mmc();
-	}
-	else
-	{
-		boot_linux_from_flash();
-	}
+	boot_linux_from_flash();
 }
 
 void cmd_reboot(const char *arg, void *data, unsigned sz)
@@ -1355,11 +1242,6 @@ void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
 	fastboot_okay("Rebooting Device to HBOOT.");
 	reboot_device(FASTBOOT_MODE);
 }
-
-void fastboot_okay(const char *info);
-void fastboot_fail(const char *reason);
-int fastboot_write(void *buf, unsigned len);
-void fastboot_register(const char *prefix, void (*handle)(const char *arg, void *data, unsigned sz));
 
 void send_mem(char* start, int len)
 {
@@ -1535,7 +1417,7 @@ void prnt_nand_stat(void)
 		return;
 	}
 	
-	dprintf(INFO,"\n\n========================== NAND INFO =========================\n\n");
+	dprintf(INFO,"\n========================= NAND INFO ========================\n\n");
 	
 	dprintf(INFO,"  Flash block size: %i bytes\n", flash_info->block_size );
 	dprintf(INFO,"  Flash page size: %i bytes\n", flash_info->page_size );
@@ -1546,8 +1428,7 @@ void prnt_nand_stat(void)
 	dprintf(INFO,"  PTABLE offset: 0x%x size: %i blocks - %i MB\n", get_flash_offset(), get_full_flash_size(), (int)( get_full_flash_size() / get_blk_per_mb() ) );
 	dprintf(INFO,"  Usable flash size: %i blocks - %i MB\n", get_usable_flash_size(), (int)( get_usable_flash_size() / get_blk_per_mb() ) );
 	dprintf(INFO,"  ExtROM offset: 0x%x size: %i blocks - %i MB\n", get_ext_rom_offset(), get_ext_rom_size(), (int)( get_ext_rom_size() / get_blk_per_mb() ) );
-
-	dprintf(INFO,"\n\n========================== NAND INFO =========================\n\n");
+	dprintf(INFO,"\n========================= NAND INFO ========================\n");
 }
 
 void cmd_oem_nand_status(void)
@@ -1578,11 +1459,10 @@ void cmd_oem_part_format_all()
 		return;
 	}
 	printf("Formating flash...\n");
-	
-	printf("\n==============================================================\n\n");
+	printf("\n============================================================\n\n");
 	
 	flash_erase(ptn);
-	printf("\n==============================================================\n\n");
+	printf("\n============================================================\n\n");
 	
 	printf("\nFormat complete ! \nReboot device to create default partition table, or create partitions manualy!\n\n");
 	
@@ -1612,11 +1492,11 @@ void cmd_oem_part_format_vpart()
 	
 	printf("Formating vptable...\n");
 	
-	printf("\n==============================================================\n\n");
+	printf("\n============================================================\n\n");
 	
 	flash_erase(ptn);
 	
-	printf("\n==============================================================\n\n");
+	printf("\n============================================================\n\n");
 
 	printf("\nFormat complete ! \nReboot device to create default partition table, or create partitions manually!\n\n");
 
@@ -1638,7 +1518,7 @@ void cmd_oem_help()
 {
 	fbcon_resetdisp();
 
-	printf("\n======================== FASTBOOT HELP ========================\n");
+	printf("\n======================= FASTBOOT HELP =======================\n");
 
 	printf(" fastboot oem help");
 	printf("  - This simple help\n\n");
@@ -1710,13 +1590,10 @@ void cmd_oem(const char *arg, void *data, unsigned sz)
 	if(memcmp(arg, "smesg", 5)==0)                         cmd_oem_smesg();
 	if(memcmp(arg, "nandstat", 8)==0)                      cmd_oem_nand_status();
 	if(memcmp(arg, "poweroff", 8)==0)                      cmd_powerdown(arg+8, data, sz);
-	if(memcmp(arg, "flashmmc ", 9)==0)                     cmd_flash_mmc(arg+9, data, sz);
-	if(memcmp(arg, "erasemmc ", 9)==0)                     cmd_erase_mmc(arg+9, data, sz);
 	if(memcmp(arg, "part-add ", 9)==0)                     cmd_oem_part_add(arg+9);
 	if(memcmp(arg, "part-del ", 9)==0)                     cmd_oem_part_del(arg+9);
 	if(memcmp(arg, "part-read", 9)==0)                     cmd_oem_part_read();
 	if(memcmp(arg, "part-list", 9)==0)                     cmd_oem_part_list();
-	if(memcmp(arg, "flashlight", 10)==0)                   cmd_flashlight();	
 	if(memcmp(arg, "part-clear", 10)==0)                   cmd_oem_part_clear();
 	if(memcmp(arg, "format-all", 10)==0)                   cmd_oem_part_format_all();
 	if(memcmp(arg, "part-commit", 11)==0)                  cmd_oem_part_commit();
@@ -1745,7 +1622,7 @@ void target_init_fboot(void)
 	fastboot_publish("secure", "no");
 	fastboot_publish("product", TARGET(BOARD));
 	fastboot_publish("kernel", "lk");
-	fastboot_publish("author", "Shantanu Gupta, Danijel Posilovic, Arif Ali, Cedesmith, Qualcomm Innovation Centre, Travis Geiselbrecht.");
+	fastboot_publish("author", "Shantanu Gupta, Danijel Posilovic, Arif Ali, Cedesmith, QuiC, Travis Geiselbrecht.");
 	fastboot_init(target_get_scratch_address(),MEMBASE - SCRATCH_ADDR - 0x00100000);
 	udc_start();
 	target_battery_charging_enable(1, 0);
@@ -1779,19 +1656,21 @@ void dump_mem(char* start, int len)
 	}
 	_dputs("\n");
 }
+static int update_header_str(void *arg)
+{
+	while(!(strlen(spl_version))){update_spl_ver();}
+	char expected_byte[] = "3";
+	while(radBuffer[0] != expected_byte[0]){update_radio_ver();}
 
+	redraw_menu();
+
+	thread_exit(0);
+	return 0;
+}
 void aboot_init(const struct app_descriptor *app)
 {
-	if (target_is_emmc_boot())
-	{
-		page_size = 2048;
-		page_mask = page_size - 1;
-	}
-	else
-	{
-		page_size = flash_page_size();
-		page_mask = page_size - 1;
-	}
+	page_size = flash_page_size();
+	page_mask = page_size - 1;
 
 	/* Check if we should do something other than booting up */
 	if (keys_get_state(keys[6]) != 0)
@@ -1814,7 +1693,7 @@ void aboot_init(const struct app_descriptor *app)
 
 	/* Couldn't Find anything to do (OR) User pressed Back Key. Load Menu */
 bmenu:
-
+	thread_resume(thread_create("hdrs", &update_header_str, NULL, LOW_PRIORITY, DEFAULT_STACK_SIZE));
 	display_init();
 	target_init_fboot();
 	init_menu();
