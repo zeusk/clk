@@ -77,16 +77,6 @@
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
-#ifndef __PLATFORM_SPLASH_H
-#define __PLATFORM_SPLASH_H
-#endif
-
-#define SPLASH_IMAGE_WIDTH     153
-#define SPLASH_IMAGE_HEIGHT    480
-
-#define SCREEN_WIDTH 480
-#define SCREEN_HEIGHT 800
-
 #define ERR_KEY_CHANGED 99
 
 void platform_uninit_timer(void);
