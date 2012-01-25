@@ -20,6 +20,7 @@ DEFINES += \
 	ARM_WITH_CACHE=1 \
 	ARM_WITH_L2=1
 CFLAGS += -mcpu=$(ARM_CPU) -mfpu=neon -mfloat-abi=softfp
+#CFLAGS += -march=armv7-a -mfloat-abi=hardfp
 HANDLED_CORE := true
 endif
 ifeq ($(ARM_CPU),arm1136j-s)
