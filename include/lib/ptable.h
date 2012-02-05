@@ -58,6 +58,24 @@ struct ptable
 	int count;
 };
 
+/* koko : Collect bad blocks */
+struct b_blocks
+{
+	char partition[MAX_PTENTRY_NAME];
+	unsigned block_pos;
+	unsigned pos_from_pstart;
+	unsigned pos_from_pend;
+};
+struct m_b_blocks
+{
+	struct b_blocks bad_blocks[64];
+	int count;
+};
+struct m_b_blocks marked_bad_blocks;
+int bad_block_exists_in_part(const char *pName);
+int num_of_bad_blocks_in_part(const char *pName);
+int small_part_with_bad_blocks_exists();
+
 /* tools to populate and query the partition table */
 void ptable_init(struct ptable *ptable);
 void ptable_add(struct ptable *ptable, char *name, unsigned start,

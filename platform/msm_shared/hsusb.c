@@ -475,11 +475,11 @@ static void handle_setup(struct udc_endpoint *ept)
 		break;
 	}
 	}
-
-	dprintf(INFO, "STALL %s %d %d %d %d %d\n",
+/* koko : Just hide this info
+	dprintf(INFO, " \n\n\n\n\n\n\n\n\n\n   STALL %s %d %d %d %d %d\n",
 		reqname(s.request),
 		s.type, s.request, s.value, s.index, s.length);
-
+*/
 stall:
 	writel((1<<16) | (1 << 0), USB_ENDPTCTRL(ept->num));    
 }

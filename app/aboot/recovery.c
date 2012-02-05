@@ -57,20 +57,20 @@ int get_recovery_message(struct recovery_message *out)
 	ptable = flash_get_ptable();
 
 	if (ptable == NULL) {
-		dprintf(CRITICAL, "ERROR: Partition table not found\n");
+		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
 	ptn = ptable_find(ptable, "misc");
 
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No misc partition found\n");
+		dprintf(CRITICAL, "   ERROR: No misc partition found\n");
 		return -1;
 	}
 
 	offset += (pagesize * MISC_COMMAND_PAGE);
 	dprintf(CRITICAL, "flash_read misc partition \n");
 	if (flash_read(ptn, offset, buf, pagesize)) {
-		dprintf(CRITICAL, "ERROR: Cannot read recovery_header\n");
+		dprintf(CRITICAL, "   ERROR: Cannot read recovery_header\n");
 		return -1;
 	}
 	dprintf(CRITICAL, "flash_read misc partition done\n");
@@ -89,20 +89,20 @@ int set_recovery_message(const struct recovery_message *in)
 	ptable = flash_get_ptable();
 
 	if (ptable == NULL) {
-		dprintf(CRITICAL, "ERROR: Partition table not found\n");
+		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
 	ptn = ptable_find(ptable, "misc");
 
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No misc partition found\n");
+		dprintf(CRITICAL, "   ERROR: No misc partition found\n");
 		return -1;
 	}
 
 	n = pagesize * (MISC_COMMAND_PAGE + 1);
 
 	if (flash_read(ptn, offset, (void *)SCRATCH_ADDR, n)) {
-		dprintf(CRITICAL, "ERROR: Cannot read recovery_header\n");
+		dprintf(CRITICAL, "   ERROR: Cannot read recovery_header\n");
 		return -1;
 	}
 
@@ -110,7 +110,7 @@ int set_recovery_message(const struct recovery_message *in)
 	offset += SCRATCH_ADDR;
 	memcpy((void *)offset, in, sizeof(*in));
 	if (flash_write(ptn, 0, (void *)SCRATCH_ADDR, n)) {
-		dprintf(CRITICAL, "ERROR: flash write fail!\n");
+		dprintf(CRITICAL, "   ERROR: flash write fail!\n");
 		return -1;
 	}
 	return 1;
@@ -125,17 +125,17 @@ int read_update_header_for_bootloader(struct update_header *header)
 
 	ptable = flash_get_ptable();
 	if (ptable == NULL) {
-		dprintf(CRITICAL, "ERROR: Partition table not found\n");
+		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
 	ptn = ptable_find(ptable, "cache");
 
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No cache partition found\n");
+		dprintf(CRITICAL, "   ERROR: No cache partition found\n");
 		return -1;
 	}
 	if (flash_read(ptn, offset, buf, pagesize)) {
-		dprintf(CRITICAL, "ERROR: Cannot read recovery_header\n");
+		dprintf(CRITICAL, "   ERROR: Cannot read recovery_header\n");
 		return -1;
 	}
 	memcpy(header, buf, sizeof(*header));
@@ -158,7 +158,7 @@ int update_firmware_image (struct update_header *header, char *name)
 
 	ptable = flash_get_ptable();
 	if (ptable == NULL) {
-		dprintf(CRITICAL, "ERROR: Partition table not found\n");
+		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
 
@@ -172,22 +172,22 @@ int update_firmware_image (struct update_header *header, char *name)
 	n = (header->image_length + pagemask) & (~pagemask);
 
 	if (flash_read(ptn, offset, (void *)SCRATCH_ADDR, n)) {
-		dprintf(CRITICAL, "ERROR: Cannot read radio image\n");
+		dprintf(CRITICAL, "   ERROR: Cannot read radio image\n");
 		return -1;
 	}
 
 	ptn = ptable_find(ptable, name);
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No %s partition found\n", name);
+		dprintf(CRITICAL, "   ERROR: No %s partition found\n", name);
 		return -1;
 	}
 
 	if (flash_write(ptn, 0, (void *)SCRATCH_ADDR, n)) {
-		dprintf(CRITICAL, "ERROR: flash write fail!\n");
+		dprintf(CRITICAL, "   ERROR: flash write fail!\n");
 		return -1;
 	}
 
-	dprintf(INFO, "Partition writen successfully!");
+	dprintf(INFO, "   Partition writen successfully!");
 	return 0;
 }
 

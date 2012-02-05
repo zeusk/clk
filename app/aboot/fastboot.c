@@ -45,8 +45,9 @@ void fastboot_sstat(unsigned int stat){
 	c_usb_stat = stat;
 }
 */
+
 /* todo: give lk strtoul and nuke this */
-         unsigned hex2unsigned(const char *x)
+unsigned hex2unsigned(const char *x)
 {
     unsigned n = 0;
 
@@ -86,7 +87,7 @@ struct fastboot_var {
 	const char *value;
 };
 	
-         struct fastboot_cmd *cmdlist;
+struct fastboot_cmd *cmdlist;
 
 void fastboot_register(const char *prefix,
 		       void (*handle)(const char *arg, void *data, unsigned sz))
@@ -102,7 +103,7 @@ void fastboot_register(const char *prefix,
 	}
 }
 
-         struct fastboot_var *varlist;
+struct fastboot_var *varlist;
 
 void fastboot_publish(const char *name, const char *value)
 {
@@ -117,32 +118,32 @@ void fastboot_publish(const char *name, const char *value)
 }
 
 
-         event_t usb_online;
-         event_t txn_done;
-         unsigned char buffer[4096];
-         struct udc_endpoint *in, *out;
-         struct udc_request *req;
+event_t usb_online;
+event_t txn_done;
+unsigned char buffer[4096];
+struct udc_endpoint *in, *out;
+struct udc_request *req;
 int txn_status;
 
-         void *download_base;
-         unsigned download_max;
-         unsigned download_size;
+void *download_base;
+unsigned download_max;
+unsigned download_size;
 
 #define STATE_OFFLINE	0
 #define STATE_COMMAND	1
 #define STATE_COMPLETE	2
 #define STATE_ERROR	3
 
-         unsigned fastboot_state = STATE_OFFLINE;
+unsigned fastboot_state = STATE_OFFLINE;
 
-         void req_complete(struct udc_request *req, unsigned actual, int status)
+void req_complete(struct udc_request *req, unsigned actual, int status)
 {
 	txn_status = status;
 	req->length = actual;
 	event_signal(&txn_done, 0);
 }
 
-         int usb_read(void *_buf, unsigned len)
+int usb_read(void *_buf, unsigned len)
 {
 	int r;
 	unsigned xfer;
@@ -159,13 +160,13 @@ int txn_status;
 		req->complete = req_complete;
 		r = udc_request_queue(out, req);
 		if (r < 0) {
-			//dprintf(INFO, "usb_read() queue failed\n");
+			//dprintf(INFO, "   usb_read() queue failed\n");
 			goto oops;
 		}
 		event_wait(&txn_done);
 
 		if (txn_status < 0) {
-			//dprintf(INFO, "usb_read() transaction failed\n");
+			//dprintf(INFO, "   usb_read() transaction failed\n");
 			goto oops;
 		}
 
@@ -185,7 +186,7 @@ oops:
 	return -1;
 }
 
-         int usb_write(void *buf, unsigned len)
+int usb_write(void *buf, unsigned len)
 {
 	int r;
 
@@ -197,12 +198,12 @@ oops:
 	req->complete = req_complete;
 	r = udc_request_queue(in, req);
 	if (r < 0) {
-		//dprintf(INFO, "usb_write() queue failed\n");
+		//dprintf(INFO, "   usb_write() queue failed\n");
 		goto oops;
 	}
 	event_wait(&txn_done);
 	if (txn_status < 0) {
-		//dprintf(INFO, "usb_write() transaction failed\n");
+		//dprintf(INFO, "   usb_write() transaction failed\n");
 		goto oops;
 	}
 	return req->length;
@@ -245,7 +246,7 @@ int fastboot_write(void *buf, unsigned len)
 	return usb_write(buf, len);
 }
 
-         void cmd_getvar(const char *arg, void *data, unsigned sz)
+void cmd_getvar(const char *arg, void *data, unsigned sz)
 {
 	struct fastboot_var *var;
 
@@ -258,7 +259,7 @@ int fastboot_write(void *buf, unsigned len)
 	fastboot_okay("");
 }
 
-         void cmd_download(const char *arg, void *data, unsigned sz)
+void cmd_download(const char *arg, void *data, unsigned sz)
 {
 	char response[64];
 	unsigned len = hex2unsigned(arg);
@@ -283,18 +284,18 @@ int fastboot_write(void *buf, unsigned len)
 	fastboot_okay("");
 }
 
-         void fastboot_command_loop(void)
+void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
 	int r;
-	//dprintf(INFO,"fastboot: processing commands\n");
+	//dprintf(INFO,"   fastboot: processing commands\n");
 	//fastboot_sstat(1);
 again:
 	while (fastboot_state != STATE_ERROR) {
 		r = usb_read(buffer, 64);
 		if (r < 0) break;
 		buffer[r] = 0;
-		dprintf(INFO,"fastboot: %s\n", buffer);
+		//dprintf(INFO,"   fastboot: %s\n", buffer);
 
 		for (cmd = cmdlist; cmd; cmd = cmd->next) {
 			if (memcmp(buffer, cmd->prefix, cmd->prefix_len))
@@ -311,7 +312,7 @@ again:
 			
 	}
 	fastboot_state = STATE_OFFLINE;
-	//dprintf(INFO,"fastboot: oops!\n");
+	//dprintf(INFO,"   fastboot: oops!\n");
 	//fastboot_sstat(0);
 }
 
@@ -336,7 +337,7 @@ void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 	}
 }
 
-         struct udc_endpoint *fastboot_endpoints[2];
+struct udc_endpoint *fastboot_endpoints[2];
 
 struct udc_gadget fastboot_gadget = {
 	.notify		= fastboot_notify,
@@ -351,7 +352,7 @@ struct udc_gadget fastboot_gadget = {
 int fastboot_init(void *base, unsigned size)
 {
 	thread_t *thr;
-	//dprintf(INFO, "fastboot_init()\n");
+	//dprintf(INFO, "   fastboot_init()\n");
 
 	download_base = base;
 	download_max = size;

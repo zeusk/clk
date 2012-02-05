@@ -6,10 +6,6 @@ SECTIONS
 {
 	. = %MEMBASE%;
 
-	/* text/read-only data */
-	.text.boot : { *(.text.boot) }
-	.text :	{ *(.text .text.* .glue_7* .gnu.linkonce.t.*) } =0x9090
-
 	.interp : { *(.interp) }
 	.hash : { *(.hash) }
 	.dynsym : { *(.dynsym) }
@@ -36,6 +32,9 @@ SECTIONS
 	.rela.plt : { *(.rela.plt) }
 	.init : { *(.init) } =0x9090
 	.plt : { *(.plt) }
+
+	/* text/read-only data */
+	.text :	{ *(.text .text.* .glue_7* .gnu.linkonce.t.*) } =0x9090
 
 	.rodata : { 
 		*(.rodata .rodata.* .gnu.linkonce.r.*)

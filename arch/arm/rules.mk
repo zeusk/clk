@@ -22,6 +22,7 @@ DEFINES += \
 CFLAGS += -mcpu=$(ARM_CPU)
 HANDLED_CORE := true
 #CFLAGS += -mfpu=vfp -mfloat-abi=softfp
+#CFLAGS += -mfpu=neon -mfloat-abi=softfp
 endif
 ifeq ($(ARM_CPU),arm1136j-s)
 DEFINES += \
@@ -120,7 +121,8 @@ $(error missing MEMBASE or MEMSIZE variable, please set in target rules.mk)
 endif
 
 LIBGCC := $(shell $(TOOLCHAIN_PREFIX)gcc $(CFLAGS) $(THUMBCFLAGS) -print-libgcc-file-name)
-#$(info LIBGCC = $(LIBGCC))
+$(info LIBGCC = $(LIBGCC))
+$(info CFLAGS = $(CFLAGS) $(THUMBCFLAGS))
 
 # potentially generated files that should be cleaned out with clean make rule
 GENERATED += \

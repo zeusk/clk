@@ -13,15 +13,31 @@ struct part_def
 	short size;		// size in blocks 1Mb = 8 Blocks
 	bool asize;		// auto-size and use all available space 1=yes 0=no
 };
-
 struct vpartitions
 {
 	char tag[7];
 	struct part_def pdef[12];
 	short extrom_enabled;
+	short size_fixed_due_to_bad_blocks;
 };
-
 struct vpartitions vparts;
+
+/* koko : Added struct needed for rearrange partitions */
+struct mirror_part_def
+{
+	char name[32];
+	short size;
+	bool asize;
+	short order;
+};
+struct mirrorpartitions
+{
+	char tag[7];
+	struct mirror_part_def pdef[12];
+	short extrom_enabled;
+	short size_fixed_due_to_bad_blocks;
+};
+struct mirrorpartitions mirrorparts;
 
 static const unsigned MAX_NUM_PART = sizeof(vparts.pdef) / sizeof(vparts.pdef[0]);
 
@@ -46,6 +62,8 @@ unsigned vpart_available_size();
 int vpart_variable_exist();
 bool vpart_partition_exist(const char* pName);
 int vpart_partition_size(const char* pName);
+int vpart_partition_order(const char* pName);
+int mirrorpart_partition_order(const char* pName);
 void vpart_resize_asize();
 short vpart_variable_size();
 void vpart_add(const char *pData);

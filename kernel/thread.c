@@ -242,7 +242,7 @@ void thread_resched(void)
 	thread_t *oldthread;
 	thread_t *newthread;
 
-//	dprintf("thread_resched: current %p: ", current_thread);
+//	dprintf("   thread_resched: current %p: ", current_thread);
 //	dump_thread(current_thread);
 
 #if THREAD_CHECKS
@@ -481,12 +481,12 @@ void thread_become_idle(void)
 
 void dump_thread(thread_t *t)
 {
-	dprintf(INFO, "dump_thread: t %p (%s)\n", t, t->name);
-	dprintf(INFO, "\tstate %d, priority %d, remaining quantum %d, critical section %d\n", t->state, t->priority, t->remaining_quantum, t->saved_critical_section_count);
-	dprintf(INFO, "\tstack %p, stack_size %zd\n", t->stack, t->stack_size);
-	dprintf(INFO, "\tentry %p, arg %p\n", t->entry, t->arg);
-	dprintf(INFO, "\twait queue %p, wait queue ret %d\n", t->blocking_wait_queue, t->wait_queue_block_ret);
-	dprintf(INFO, "\ttls:");
+	dprintf(INFO, "   dump_thread: t %p (%s)\n", t, t->name);
+	dprintf(INFO, "   \tstate %d, priority %d, remaining quantum %d, critical section %d\n", t->state, t->priority, t->remaining_quantum, t->saved_critical_section_count);
+	dprintf(INFO, "   \tstack %p, stack_size %zd\n", t->stack, t->stack_size);
+	dprintf(INFO, "   \tentry %p, arg %p\n", t->entry, t->arg);
+	dprintf(INFO, "   \twait queue %p, wait queue ret %d\n", t->blocking_wait_queue, t->wait_queue_block_ret);
+	dprintf(INFO, "   \ttls:");
 	int i;
 	for (i=0; i < MAX_TLS_ENTRY; i++) {
 		dprintf(INFO, " 0x%x", t->tls[i]);

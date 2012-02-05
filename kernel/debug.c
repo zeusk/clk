@@ -46,7 +46,7 @@ STATIC_COMMAND_END(kernel);
 #if DEBUGLEVEL > 1
 static int cmd_threads(int argc, const cmd_args *argv)
 {
-	printf("thread list:\n");
+	printf("   thread list:\n");
 	dump_all_threads();
 
 	return 0;
@@ -56,16 +56,16 @@ static int cmd_threads(int argc, const cmd_args *argv)
 #if THREAD_STATS
 static int cmd_threadstats(int argc, const cmd_args *argv)
 {
-	printf("thread stats:\n");
-	printf("\ttotal idle time: %lld\n", thread_stats.idle_time);
-	printf("\ttotal busy time: %lld\n", current_time_hires() - thread_stats.idle_time);
-	printf("\treschedules: %d\n", thread_stats.reschedules);
-	printf("\tcontext_switches: %d\n", thread_stats.context_switches);
-	printf("\tpreempts: %d\n", thread_stats.preempts);
-	printf("\tyields: %d\n", thread_stats.yields);
-	printf("\tinterrupts: %d\n", thread_stats.interrupts);
-	printf("\ttimer interrupts: %d\n", thread_stats.timer_ints);
-	printf("\ttimers: %d\n", thread_stats.timers);
+	printf("   thread stats:\n");
+	printf("   \ttotal idle time: %lld\n", thread_stats.idle_time);
+	printf("   \ttotal busy time: %lld\n", current_time_hires() - thread_stats.idle_time);
+	printf("   \treschedules: %d\n", thread_stats.reschedules);
+	printf("   \tcontext_switches: %d\n", thread_stats.context_switches);
+	printf("   \tpreempts: %d\n", thread_stats.preempts);
+	printf("   \tyields: %d\n", thread_stats.yields);
+	printf("   \tinterrupts: %d\n", thread_stats.interrupts);
+	printf("   \ttimer interrupts: %d\n", thread_stats.timer_ints);
+	printf("   \ttimers: %d\n", thread_stats.timers);
 
 	return 0;
 }
@@ -84,8 +84,8 @@ static enum handler_return threadload(struct timer *t, time_t now, void *arg)
 
 	uint busypercent = (busy_time * 10000) / (1000000);
 
-//	printf("idle_time %lld, busytime %lld\n", idle_time - last_idle_time, busy_time);
-	printf("LOAD: %d.%02d%%, cs %d, ints %d, timer ints %d, timers %d\n", busypercent / 100, busypercent % 100,
+//	printf("   idle_time %lld, busytime %lld\n", idle_time - last_idle_time, busy_time);
+	printf("   LOAD: %d.%02d%%, cs %d, ints %d, timer ints %d, timers %d\n", busypercent / 100, busypercent % 100,
 			thread_stats.context_switches - old_stats.context_switches,
 			thread_stats.interrupts - old_stats.interrupts,
 			thread_stats.timer_ints - old_stats.timer_ints,

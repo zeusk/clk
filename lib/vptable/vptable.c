@@ -63,20 +63,20 @@ int read_vptable(struct vpartitions *out)
 	struct ptable* ptable = flash_get_vptable();
 	if ( ptable == NULL ) 
 	{
-		dprintf( CRITICAL, "ERROR: VPTABLE not found!!!\n" );
+		dprintf( CRITICAL, "   ERROR: VPTABLE not found!!!\n" );
 		return -1;
 	}
 
 	struct ptentry* ptn = ptable_find( ptable, PTN_VPTABLE );
 	if ( ptn == NULL )
 	{
-		dprintf( CRITICAL, "ERROR: No VPTABLE partition!!!\n" );
+		dprintf( CRITICAL, "   ERROR: No VPTABLE partition!!!\n" );
 		return -1;
 	}
 
 	if ( flash_read( ptn, 0, buf, sizeof( *out ) ) )
 	{
-		dprintf( CRITICAL, "ERROR: Cannot read VPTABLE header\n");
+		dprintf( CRITICAL, "   ERROR: Cannot read VPTABLE header\n");
 		return -1;
 	}
 
@@ -90,27 +90,27 @@ int write_vptable(const struct vpartitions *in)
 	struct ptable* ptable = flash_get_vptable();
 	if ( ptable == NULL )
 	{
-		printf( CRITICAL, "ERROR: VPTABLE table not found!!!\n" );
+		printf( CRITICAL, "   ERROR: VPTABLE table not found!!!\n" );
 		return -1;
 	}
 
 	struct ptentry* ptn = ptable_find( ptable, PTN_VPTABLE );
 	if ( ptn == NULL )
 	{
-		printf( CRITICAL, "ERROR: No VPTABLE partition!!!\n" );
+		printf( CRITICAL, "   ERROR: No VPTABLE partition!!!\n" );
 		return -1;
 	}
 
 	unsigned pagesize = flash_page_size();
 	if ( pagesize == 0 )
 	{
-		printf( CRITICAL, "ERROR: Invalid pagesize!!!\n" );
+		printf( CRITICAL, "   ERROR: Invalid pagesize!!!\n" );
 		return -1;
 	}
 
 	if ( sizeof( *in ) > pagesize )
 	{
-		printf( CRITICAL, "ERROR: Invalid VPTABLE header size!!!\n" );
+		printf( CRITICAL, "   ERROR: Invalid VPTABLE header size!!!\n" );
 		return -1;
 	}
 
@@ -119,7 +119,7 @@ int write_vptable(const struct vpartitions *in)
 
 	if ( flash_write( ptn, 0, (void*) SCRATCH_ADDR, pagesize ) )
 	{
-		printf( CRITICAL, "ERROR: failed to write VPTABLE header!!!\n" );
+		printf( CRITICAL, "   ERROR: failed to write VPTABLE header!!!\n" );
 		return -1;
 	}
 
@@ -167,6 +167,28 @@ int vpart_partition_size(const char* pName)
 	{
 		if ( !memcmp( vparts.pdef[i].name, pName, strlen( pName ) ) )
 			return vparts.pdef[i].size;
+	}
+
+	return 0;
+}
+
+int vpart_partition_order(const char* pName)
+{
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{
+		if ( !memcmp( vparts.pdef[i].name, pName, strlen( pName ) ) )
+			return i+1;
+	}
+
+	return 0;
+}
+
+int mirrorpart_partition_order(const char* pName)
+{
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{
+		if ( !memcmp( mirrorparts.pdef[i].name, pName, strlen( pName ) ) )
+			return mirrorparts.pdef[i].order;
 	}
 
 	return 0;
@@ -244,17 +266,17 @@ void vpart_add_ex(const char *pName, unsigned size)
 			if ( size == 0 )
 			{
 				// Variable partition, set available size
-				vparts.pdef[i].size		= available_size;
+				vparts.pdef[i].size	= available_size;
 				vparts.pdef[i].asize	= 1;
 			}
 			else
 			{
 				// Fixed partition, recalculate variable partition
-				vparts.pdef[i].size		= size;
+				vparts.pdef[i].size	= size;
 				vparts.pdef[i].asize	= 0;
 				vpart_resize_asize();
 			}
-
+			
 			break;
 		}
 	}
@@ -400,30 +422,33 @@ void vpart_clear()
 // Print current ptable
 void vpart_list()
 {
-	printf( "\n====================== PARTITION TABLE =====================\n\n" );
-
+	printf("    ____________________________________________________ \n\
+		   |                  PARTITION  TABLE                  |\n\
+		   |____________________________________________________|\n\
+		   | MTDBLOCK# |   NAME   | AUTO-SIZE |  BLOCKS  |  MB  |\n");
+	printf("   |===========|==========|===========|==========|======|\n");
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
 		if ( strlen( vparts.pdef[i].name ) == 0 )
 			break;
 		
-		printf( "%i, name=%s, auto=%i, blocks=%i, size=%i MB\n", i+1, vparts.pdef[i].name,
+		printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", i, vparts.pdef[i].name,
 			vparts.pdef[i].asize, vparts.pdef[i].size, vparts.pdef[i].size / get_blk_per_mb() );
 	}
-
-	printf( "\n====================== PARTITION TABLE =====================\n\n" );
+	printf("   |___________|__________|___________|__________|______|\n");
 }
 
 // Create default partition layout
+/* koko : Changed default ptable so that cache is last part */
 void vpart_create_default()
 {
 	vpart_clear();
-	vpart_add( "misc:1" );
 	vpart_add( "recovery:5" );
+	vpart_add( "misc:1" );
 	vpart_add( "boot:5" );
 	vpart_add( "system:150" );
-	vpart_add( "cache:5" );
 	vpart_add( "userdata:0" );
+	vpart_add( "cache:5" );
 }
 
 void vpart_commit()
@@ -461,6 +486,7 @@ void init_vpart()
 	if ( strcmp( vparts.tag, TAG_VPTABLE ) )
 	{
 		vparts.extrom_enabled = 0;
+		vparts.size_fixed_due_to_bad_blocks = 0;
 		vpart_create_default();
 		vpart_commit();
 	}

@@ -198,7 +198,7 @@ void target_init(void)
 
 		// Add partition
 		ptable_add( &flash_ptable, vparts.pdef[i].name, start_blk, vparts.pdef[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
-
+		
 		// Skip to next free block
 		start_blk += vparts.pdef[i].size;
 	}

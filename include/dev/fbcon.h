@@ -53,11 +53,14 @@ struct fbcon_config {
 };
 struct fbcon_config* fbcon_display(void);
 
-int  fbcon_get_y_cord(void);
+int fbcon_get_y_cord(void);
 int fbcon_get_x_cord(void);
 uint16_t fbcon_get_bgcol(void);
 
 bool didyouscroll(void);
+
+/* koko : Needed for option to invert colors */
+bool inverted;
 
 void fbcon_setup(struct fbcon_config *cfg);
 void fbcon_putc(char c);

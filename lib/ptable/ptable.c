@@ -98,3 +98,40 @@ int ptable_size(struct ptable *ptable)
 {
     return ptable->count;
 }
+
+/* koko : Check if a specific bad block belongs to a partition */
+int bad_block_exists_in_part(const char *pName)
+{
+	for (int i = 0; i < marked_bad_blocks.count; i++)
+	{
+		if( (strlen(marked_bad_blocks.bad_blocks[i].partition)!=0) && (!memcmp(marked_bad_blocks.bad_blocks[i].partition, pName, strlen(pName))) )
+			return 1;
+	}
+
+	return 0;
+}
+
+/* koko : Count bad blocks in a partition */
+int num_of_bad_blocks_in_part(const char *pName)
+{
+	int bad_blocks_num=0;
+	for (int i = 0; i < marked_bad_blocks.count; i++)
+	{
+		if( (strlen(marked_bad_blocks.bad_blocks[i].partition)!=0) && (!memcmp(marked_bad_blocks.bad_blocks[i].partition, pName, strlen(pName))) )
+			bad_blocks_num++;
+	}
+
+	return bad_blocks_num;
+}
+
+/* koko : Check if a partition which has bad blocks and size <=5MB exists */
+int small_part_with_bad_blocks_exists()
+{
+	for (int i = 0; i < marked_bad_blocks.count; i++)
+	{
+		if( (strlen(marked_bad_blocks.bad_blocks[i].partition)!=0) && (memcmp(marked_bad_blocks.bad_blocks[i].partition, "ExtROM", strlen(marked_bad_blocks.bad_blocks[0].partition))) && ((marked_bad_blocks.bad_blocks[i].pos_from_pstart + marked_bad_blocks.bad_blocks[i].pos_from_pend)<=40) )
+			return 1;
+	}
+
+	return 0;
+}

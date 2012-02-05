@@ -14,6 +14,7 @@ void platform_early_init(void)
 
 void platform_init(void)
 {
+	inverted = false;
 	dprintf(INFO, "platform_init()\n");
 }
 
