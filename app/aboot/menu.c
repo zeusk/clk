@@ -171,16 +171,16 @@ void add_menu_item(struct menu *xmenu,const char *name,const char *command)
 }
 int flashlight(void *arg)
 {
-	// Code picked from htc-linux.org
-	volatile unsigned *bank6_p1= (unsigned int*)(0xA9000864);
-	volatile unsigned *bank6_p2= (unsigned int*)(0xA9000814);
-	for(;;)
+	if ( target_support_flashlight() )
 	{
-		*bank6_p2=*bank6_p1 ^ 0x200000;
-		if(keys_get_state(0x123)!=0)break;
-		udelay(498);
+		for(;;)
+		{
+			if(keys_get_state(0x123)!=0)break;
+			udelay(   (unsigned)(((unsigned)target_flashlight())-2)   );
+		}
 	}
 	thread_exit(0);
+	return 0;
 }
 void cmd_flashlight(void)
 {

@@ -232,6 +232,10 @@ void target_early_init(void)
 	writel(0xe590f004, 4); //ldr	r15, [r0, #4]
 }
 
+unsigned target_support_flashlight(void)
+{
+	return 1;
+}
 unsigned board_machtype(void)
 {
 	return LINUX_MACHTYPE;
