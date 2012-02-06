@@ -508,18 +508,31 @@ void eval_command(void)
 	if (!memcmp(command,"boot_recv", strlen(command)))
 	{
         	fbcon_resetdisp();
+		if(inverted){printf(" \n\n\n\n");}
         	boot_into_sboot = 0;
         	boot_into_recovery = 1;
         	boot_linux_from_flash();
 	}
-	else if (!memcmp(command,"prnt_clrs", strlen(command)))
+	else if (!memcmp(command,"prnt_bblocks", strlen(command)))
 	{
         	redraw_menu();
+		printf("    ____________________________________________________ \n\
+			   |                   NAND BAD BLOCKS                  |\n\
+			   |____________________________________________________|\n");
+		for ( int j = 0; j < marked_bad_blocks.count; j++ )
+		{
+			printf( "   | BLOCK @%4d [%4dMB], (inside %8s boundaries) |\n",
+				marked_bad_blocks.bad_blocks[j].block_pos,
+				marked_bad_blocks.bad_blocks[j].block_pos/8,
+				marked_bad_blocks.bad_blocks[j].partition);
+		}
+		printf("   |____________________________________________________|   ");
 		selector_enable();
     	}
 	else if (!memcmp(command,"boot_sbot", strlen(command)))
 	{
         	fbcon_resetdisp();
+		if(inverted){printf(" \n\n\n\n");}
         	boot_into_sboot = 1;
         	boot_into_recovery = 0;
         	boot_linux_from_flash();
@@ -527,6 +540,7 @@ void eval_command(void)
 	else if (!memcmp(command,"boot_nand", strlen(command)))
 	{
         	fbcon_resetdisp();
+		if(inverted){printf(" \n\n\n\n");}
         	boot_into_sboot = 0;
         	boot_into_recovery = 0;
         	boot_linux_from_flash();
@@ -1532,6 +1546,9 @@ void init_menu()
 	add_menu_item(&sett_menu, "   RESIZE PARTITIONS", "goto_rept");
 	add_menu_item(&sett_menu, "   REARRANGE PARTITIONS", "goto_rear");
 	add_menu_item(&sett_menu, "   PRINT PARTITION TABLE", "prnt_stat");
+	if( bad_blocks_collect(ptable_find(flash_get_vptable(), "task29")) > 0 )
+		add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE", "prnt_bblocks");
+
 	add_menu_item(&sett_menu, "   FORMAT NAND", "format_nand");
 	//add_menu_item(&sett_menu, "   FACTORY DATA RESET", "reset_data");
 	if (vpart_partition_exist("sboot"))
@@ -2304,15 +2321,20 @@ void prnt_nand_stat(void)
 	printf("    ____________________________________________________ \n\
 		   |                      NAND INFO                     |\n\
 		   |____________________________________________________|\n" );
-	printf("   | Flash   block   size: %22i bytes |\n", flash_info->block_size );
-	printf("   | Flash   page    size: %22i bytes |\n", flash_info->page_size );
-	printf("   | Flash   spare   size: %22i bytes |\n", flash_info->spare_size );
-	printf("   | Flash   total   size: %4i block(s)  - %5i MB    |\n", flash_info->num_blocks, (int)( flash_info->num_blocks / get_blk_per_mb() ) );
+	printf("   | Flash   block   size: %22i bytes |\n", flash_info->block_size);
+	printf("   | Flash   page    size: %22i bytes |\n", flash_info->page_size);
+	printf("   | Flash   spare   size: %22i bytes |\n", flash_info->spare_size);
+	printf("   | Flash   total   size: %4i block(s)  - %5i MB    |\n",
+		flash_info->num_blocks, (int)(flash_info->num_blocks/get_blk_per_mb()));
 	printf("   |====================================================|\n");
-	printf("   | ROM     (0x%x) size: %4i block(s)  - %5i MB    |\n", HTCLEO_ROM_OFFSET, get_usable_flash_size(), (int)( get_usable_flash_size() / get_blk_per_mb() ) );
-	printf("   | VPTABLE (0x%x) size: %4i block(s)  - %5i KB    |\n", ptn->start, ptn->length, (flash_info->block_size/1024) );
-	printf("   | PTABLE  (0x%x) size: %4i block(s)  - %5i MB    |\n", get_flash_offset(), get_full_flash_size(), (int)( get_full_flash_size() / get_blk_per_mb() ) );
-	printf("   | ExtROM  (0x%x) size: %4i block(s)  - %5i MB    |\n", get_ext_rom_offset(), get_ext_rom_size(), (int)( (get_ext_rom_size() / get_blk_per_mb())+1 ) );
+	printf("   | ROM     (0x%x) size: %4i block(s)  - %5i MB    |\n",
+		HTCLEO_ROM_OFFSET, get_usable_flash_size(), (int)(get_usable_flash_size()/get_blk_per_mb()));
+	printf("   | VPTABLE (0x%x) size: %4i block(s)  - %5i KB    |\n",
+		ptn->start, ptn->length, (flash_info->block_size/1024));
+	printf("   | PTABLE  (0x%x) size: %4i block(s)  - %5i MB    |\n",
+		get_flash_offset(), get_full_flash_size(), (int)(get_full_flash_size()/get_blk_per_mb()));
+	printf("   | ExtROM  (0x%x) size: %4i block(s)  - %5i MB    |\n",
+		get_ext_rom_offset(), get_ext_rom_size(), (int)((get_ext_rom_size()/get_blk_per_mb())+1));
 	printf("   |____________________________________________________|\n");
 }
 
@@ -2349,7 +2371,7 @@ void cmd_oem_part_format_all()
 
 	printf("   Formating flash...\n");	
 	flash_erase(ptn);	
-	printf("\n   Format complete ! \n   Reboot device to create default partition table,\n   or create partitions manualy!\n");
+	printf("\n   Format complete !\n   Reboot device to create default partition table,\n   or create partitions manualy!\n");
 	
 	selector_enable();
 	fastboot_okay("");
@@ -2378,7 +2400,7 @@ void cmd_oem_part_format_vpart()
 
 	printf("   Formating vptable...\n");
 	flash_erase(ptn);
-	printf("\n   Format complete ! \n   Reboot device to create default partition table,\n   or create partitions manually!\n");
+	printf("\n   Format complete !\n   Reboot device to create default partition table,\n   or create partitions manually!\n");
 
 	selector_enable();
 	fastboot_okay("");
@@ -2512,7 +2534,10 @@ static int post_boot_proc(void *arg)
 			   |____________________________________________________|\n");
 		for ( int j = 0; j < marked_bad_blocks.count; j++ )
 		{
-			printf( "   | %i. block=%d - inside %8s boundaries [%dMB] |\n", j+1, (marked_bad_blocks.bad_blocks[j].block_pos), (marked_bad_blocks.bad_blocks[j].partition), (marked_bad_blocks.bad_blocks[j].block_pos)/8 );
+			printf( "   | BLOCK @%4d [%4dMB], (inside %8s boundaries) |\n",
+				marked_bad_blocks.bad_blocks[j].block_pos,
+				marked_bad_blocks.bad_blocks[j].block_pos/8,
+				marked_bad_blocks.bad_blocks[j].partition);
 		}
 		printf("   |____________________________________________________|   ");
 
@@ -2525,8 +2550,8 @@ static int post_boot_proc(void *arg)
         			printf("\n   Initializing auto-resizing process...\n   This process will run ONLY this SINGLE time !");
 				thread_sleep(4000);
 			      	fbcon_resetdisp();
-				printf("\n\nAuto-resizing partitions...\n\n");
-				int num=0;
+				if(inverted){printf(" \n\n\n\n");}
+				printf("\n\nIncreasing size of partition(s)...\n\n");
 				for ( int i = 0; i < marked_bad_blocks.count; i++ )
 				{
 					// Resize the small partitions (recovery, misc, boot, sboot, cache) that have bad block(s)
@@ -2534,9 +2559,7 @@ static int post_boot_proc(void *arg)
 	      				if( (vpart_partition_size(marked_bad_blocks.bad_blocks[i].partition)==40) || (vpart_partition_size(marked_bad_blocks.bad_blocks[i].partition)==8) )
 	            			{
 						unsigned addendum=8*num_of_bad_blocks_in_part(marked_bad_blocks.bad_blocks[i].partition);
-						printf("%i. Increasing '%s' size [%iMB ==> %iMB]\n\
-							                            due to %2i included bad block(s).\n",
-							++num,
+						printf("%s RESIZED: %iMB->%2iMB due to %i included bad block(s)\n",
 							marked_bad_blocks.bad_blocks[i].partition,
 							vparts.pdef[vpart_partition_order(marked_bad_blocks.bad_blocks[i].partition)-1].size/8,
 							(vparts.pdef[vpart_partition_order(marked_bad_blocks.bad_blocks[i].partition)-1].size + addendum)/8,
