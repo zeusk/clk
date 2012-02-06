@@ -334,12 +334,12 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 
 	if (page < (NUM_PROTECTED_BLOCKS<<6))
 	{
-		printf("   Skipping block @ %d [%dMB] (PROTECTED block)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (PROTECTED block)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 	/* only allow erasing on block boundaries */
 	if(page & 63) {
-		printf("   Skipping block @ %d [%dMB] (BOUNDARY block)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (BOUNDARY block)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 
@@ -347,11 +347,11 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 	isbad = flash_nand_block_isbad(cmdlist, ptrlist, page);
 
 	if (isbad>0) {
-		printf("   Skipping block @ %d [%dMB] (MARKED BAD block)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (MARKED BAD block)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 	if (isbad<0) {
-		printf("   Skipping block @ %d [%dMB] (OPERATION error)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (OPERATION error)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 
@@ -409,12 +409,12 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 	 ** erase success bit was not set.
 	 */
 	if(data[5] & 0x110) {
-		printf("   Skipping block @ %d [%dMB] (OPERATION error)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (OPERATION error)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 
 	if(!(data[5] & 0x80)) {
-		printf("   Skipping block @ %d [%dMB] (OPERATION error)\n", (page >> 6), (page >> 9));
+		printf("   Skipping block @%d [%dMB], (OPERATION error)\n", (page >> 6), (page >> 9));
 		return -1;
 	}
 
