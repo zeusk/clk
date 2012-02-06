@@ -55,4 +55,6 @@ OBJS += \
 	$(LOCAL_DIR)/atags.o \
 	$(LOCAL_DIR)/htcleo_boot.o \
 	$(LOCAL_DIR)/htcleo_boot_s.o\
+	$(LOCAL_DIR)/htcleo_flashlight.o \
+	$(LOCAL_DIR)/htcleo_flashlight_s.o \
 	$(LOCAL_DIR)/platform.o
