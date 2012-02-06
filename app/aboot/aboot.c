@@ -1558,15 +1558,16 @@ void cmd_oem_help()
 
 static int flashlight(void *arg)
 {
-	volatile unsigned *bank6_in = (unsigned int*)(0xA9000864);
-	volatile unsigned *bank6_out = (unsigned int*)(0xA9000814);
-	for(;;)
+	if ( target_support_flashlight() )
 	{
-		*bank6_out = *bank6_in ^ 0x200000;
-		udelay(496);
-		if(keys_get_state_n(0x123)!=0)break;
+		for(;;)
+		{
+			if(keys_get_state_n(0x123)!=0)break;
+			udelay(   (unsigned)(((unsigned)target_flashlight())-2)   );
+		}
 	}
 	thread_exit(0);
+	return 0;
 }
 
 void cmd_flashlight(void)
