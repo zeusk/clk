@@ -206,6 +206,24 @@ void target_init(void)
 	flash_set_ptable( &flash_ptable );
 }
 
+/* koko : No reboot needed for changes to take effect if we use this */
+static struct ptable flash_newptable;
+void ptable_re_init(void)
+{
+	unsigned start_blk = flash_start_blk;
+	ptable_init( &flash_ptable );
+	ptable_init( &flash_newptable );
+
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{
+		if ( strlen( vparts.pdef[i].name ) == 0 )
+			break;
+		ptable_add( &flash_newptable, vparts.pdef[i].name, start_blk, vparts.pdef[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+		start_blk += vparts.pdef[i].size;
+	}
+	flash_ptable = flash_newptable;
+}
+
 struct fbcon_config* fbcon_display(void);
 
 int htcleo_fastboot_init()
