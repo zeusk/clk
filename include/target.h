@@ -28,7 +28,8 @@ void target_early_init(void);
 
 /* later init, after the kernel has come up */
 void target_init(void);
-
+/* set ptable to new value without rebooting */
+void ptable_re_init(void);
 /* get memory address for fastboot image loading */
 void *target_get_scratch_address(void);
 
