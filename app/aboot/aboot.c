@@ -45,6 +45,7 @@
 #include <err.h>
 #include <hsusb.h>
 #include <platform.h>
+#include <target.h>
 #include <reg.h>
 #include <smem.h>
 #include <stdlib.h>
@@ -577,6 +578,37 @@ void eval_command(void)
 	}
 	else if (!memcmp(command,"goto_sett", strlen(command)))
 	{
+		sett_menu.top_offset    = 0;
+		sett_menu.bottom_offset = 0;
+		sett_menu.maxarl	= 0;
+		sett_menu.goback	= 0;
+	
+		add_menu_item(&sett_menu, "   RESIZE PARTITIONS", "goto_rept");
+		add_menu_item(&sett_menu, "   REARRANGE PARTITIONS", "goto_rear");
+		add_menu_item(&sett_menu, "   PRINT PARTITION TABLE", "prnt_stat");
+		if( bad_blocks_collect(ptable_find(flash_get_vptable(), "task29")) > 0 ){
+			add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE", "prnt_bblocks");
+		}
+		add_menu_item(&sett_menu, "   FORMAT NAND", "format_nand");
+		//add_menu_item(&sett_menu, "   FACTORY DATA RESET", "reset_data");
+		if (vpart_partition_exist("sboot")){
+			add_menu_item(&sett_menu,"   REMOVE sBOOT","disable_sboot");
+		}else{
+			add_menu_item(&sett_menu,"   ADD sBOOT","enable_sboot");
+		}
+		if (vparts.extrom_enabled){
+			add_menu_item(&sett_menu,"   DISABLE ExtROM","disable_extrom");
+		}else{
+			add_menu_item(&sett_menu,"   ENABLE ExtROM","enable_extrom");
+		}
+		add_menu_item(&sett_menu, "   INVERT SCREEN COLORS", "invert_colors");
+
+		strcpy( rept_menu.MenuId, "RESIZE PARTITIONS" );
+		strcpy( rept_menu.backCommand, "goto_sett" );
+	
+		strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
+		strcpy( rear_menu.backCommand, "goto_sett" );
+	
 		/* koko : Need to link mirrorparts with vparts for option "REARRANGE PARTITIONS" to work.
 			  The linking is done here so that every time the user enters this submenu he resets mirrorparts to vparts.
 			  Check vptable.h for new struct */
@@ -599,6 +631,22 @@ void eval_command(void)
 	/* koko : Added INFO section which hosts CREDITS,HELP AND NAND INFO */
 	else if (!memcmp(command,"goto_about", strlen(command)))
 	{
+		about_menu.top_offset    = 0;
+		about_menu.bottom_offset = 0;
+		about_menu.selectedi     = 0;
+		about_menu.maxarl	= 0;
+		about_menu.goback	= 0;
+	
+		add_menu_item(&about_menu, "   NAND INFO", "prnt_nand");
+		add_menu_item(&about_menu, "   CREDITS", "goto_credits");
+		add_menu_item(&about_menu, "   HELP", "goto_help");
+		
+		strcpy( cred_menu.MenuId, "CREDITS" );
+		strcpy( cred_menu.backCommand, "goto_about" );
+	
+		strcpy( help_menu.MenuId, "HELP" );
+		strcpy( help_menu.backCommand, "goto_about" );
+
 		active_menu = &about_menu;
 		redraw_menu();
 		selector_enable();
@@ -673,9 +721,19 @@ void eval_command(void)
 		vpart_resize_asize();
 		vpart_commit();
 
+      		/* Load new PTABLE layout without rebooting */
+      		printf("\n   New PTABLE layout has been successfully loaded.\
+			\n   Returning to MAIN MENU in a few seconds...");
+		ptable_re_init();
+		thread_sleep(5000);
+		active_menu = &main_menu;
+		redraw_menu();
+		selector_enable();
+
+      		/* Auto reboot to load new PTABLE layout
 		printf("\n   Device will reboot in 5s for changes to take place.");
 		thread_sleep(5000);
-		reboot_device(FASTBOOT_MODE);
+		reboot_device(FASTBOOT_MODE); */
     	}
 	/* koko : Disabling ExtROM will automatically resize cache */
 	else if (!memcmp(command,"disable_extrom", strlen(command)))
@@ -727,9 +785,20 @@ void eval_command(void)
 		vpart_resize_asize();
 		vpart_commit();
 
+
+      		/* Load new PTABLE layout without rebooting */
+      		printf("\n   New PTABLE layout has been successfully loaded.\
+			\n   Returning to MAIN MENU in a few seconds...");
+		ptable_re_init();
+		thread_sleep(5000);
+		active_menu = &main_menu;
+		redraw_menu();
+		selector_enable();
+
+      		/* Auto reboot to load new PTABLE layout
 		printf("\n   Device will reboot in 5s for changes to take place.");
 		thread_sleep(5000);
-		reboot_device(FASTBOOT_MODE);
+		reboot_device(FASTBOOT_MODE); */
     	}
 	/* koko : Added FORMAT NAND */
 	else if (!memcmp(command,"format_nand", strlen(command)))
@@ -758,76 +827,6 @@ void eval_command(void)
 		vpart_read();
 
 		selector_enable();
-
-/*		// Tried another way of formatting NAND but I'm missing something and it doesn't work.
-		// And it seems that this way I'm doing more than what is really required for this task..
-		// Above method is simple and efficient for what I had in mind.
-		struct ptentry *ptn;
-		struct ptentry *recptn;
-
-		// Store the recovery image in order to re-store it at the end so that we are not stuck without a recovery
-		recptn = ptable_find(flash_get_ptable(), "recovery");
-		char buf[(recptn->length*128*1024)];
-		if(recptn == NULL) 
-		{
-			printf( "   ERROR: No recovery partition found!!!\n");
-			return;
-		}
-
-		if( flash_read(recptn, 0, buf, recptn->length*64) )
-		{
-			printf("   ERROR: Cannot read existing recovery!!!\n");
-			return;
-		}
-
-		// Do the format
-		ptn = ptable_find(flash_get_vptable(), "task29");
-		if(ptn == NULL) 
-		{
-			printf( "   ERROR: No vptable partition!!!\n");
-			return;
-		}
-		flash_erase(ptn);
-		printf("   Format completed !");
-
-		// Create default ptable or adjust the sizes if the existing recovery is bigger than 5MB
-		vpart_clear();
-		if( (int)recptn->length > 40 )
-		{
-			char name_and_size[64];
-			sprintf( name_and_size, "%s:%d", "recovery", (recptn->length/get_blk_per_mb()) );
-			vpart_add( name_and_size );
-			vpart_add( "misc:1" );
-			vpart_add( "boot:5" );
-			vpart_add( "system:150" );
-			vpart_add( "userdata:0" );
-			vpart_add( "cache:5" );
-		}
-		else
-		{
-			vpart_create_default();
-		}
-		vpart_resize_asize();
-		vpart_commit();
-		printf("\n\n   Default partition table created !");
-
-		thread_sleep(2000);
-
-		vpart_read();
-
-		// Write back recovery partition
-		printf( "\n\n   Restoring '%s' partition...", recptn->name);
-		if(flash_write(recptn, 0, (void*)buf, (recptn->length*128*1024)))
-		{
-			printf(CRITICAL, "   ERROR: Cannot write partition!!!\n");
-			return;
-		}
-		printf("\n   Recovery restored !\n");
-
-		// Confirm that default ptable was created
-		vpart_list();
-		selector_enable();
-*/
     	}
 /*	// FACTORY DATA RESET
 	else if (!memcmp(command,"reset_data", strlen(command)))
@@ -882,9 +881,8 @@ void eval_command(void)
 		else
 		{
 			inverted = true;
-		}
-		//fbcon_resetdisp(); // fbcon_resetdisp() doesn't do the jod
-		display_init();      // so I call display_init()
+		}			// fbcon_resetdisp() doesn't do the jod
+		display_init();      	// so display_init() is called
 		active_menu = &main_menu;
 		redraw_menu();
 		selector_enable();
@@ -924,11 +922,24 @@ void eval_command(void)
 		}
 		vpart_resize_asize();
 		vpart_commit();
+		vpart_read();
+		vpart_list();
 
-		// Auto reboot to load new PTABLE layout
-		printf("\n   Device will reboot in 2s for changes to take place.");
-		thread_sleep(2000);
-		reboot_device(FASTBOOT_MODE);
+		/* Load new PTABLE layout without rebooting */
+      		printf("\n   Above PTABLE layout has been successfully loaded.\
+			\n   Returning to MAIN MENU in a few seconds...");
+		ptable_re_init();
+		flash_erase(ptable_find(flash_get_ptable(), "sboot"));
+		flash_erase(ptable_find(flash_get_ptable(), "cache"));
+		thread_sleep(5000);
+		active_menu = &main_menu;
+		redraw_menu();
+		selector_enable();
+
+		/* Auto reboot in recovery
+		printf("\n   Device will boot in recovery in order to flash_sboot");
+		thread_sleep(5000);
+		reboot_device(RECOVERY_MODE); */
     	}
 	/* koko : Added REMOVE sBOOT */
 	else if (!memcmp(command,"disable_sboot", strlen(command)))
@@ -945,11 +956,22 @@ void eval_command(void)
 		}
 		vpart_resize_asize();
 		vpart_commit();
+		vpart_read();
+		vpart_list();
 
-		// Auto reboot to load new PTABLE layout
-		printf("\n   Device will reboot in 2s for changes to take place.");
-		thread_sleep(2000);
-		reboot_device(FASTBOOT_MODE);
+      		/* Load new PTABLE layout without rebooting */
+      		printf("\n   Above PTABLE layout has been successfully loaded.\
+			\n   Returning to MAIN MENU in a few seconds...");
+		ptable_re_init();
+		thread_sleep(5000);
+		active_menu = &main_menu;
+		redraw_menu();
+		selector_enable();
+
+      		/* Auto reboot to load new PTABLE layout
+		printf("\n   Device will reboot in 5s for changes to take place.");
+		thread_sleep(5000);
+		reboot_device(FASTBOOT_MODE); */
     	}
 	else if (!memcmp(command,"goto_rept", strlen(command)))
 	{
@@ -1103,10 +1125,19 @@ void eval_command(void)
 				vpart_resize_asize();
 				vpart_commit();
 
-				// Auto reboot to load new PTABLE layout
+				/* Load new PTABLE layout without rebooting */
+				printf("\n   Above PTABLE layout has been successfully loaded.\
+					\n   Returning to MAIN MENU in a few seconds...");
+				ptable_re_init();
+				thread_sleep(5000);
+				active_menu = &main_menu;
+				redraw_menu();
+				selector_enable();
+
+				/* Auto reboot to load new PTABLE layout
 				printf("\n   Device will reboot in 2s for changes to take place.");
 				thread_sleep(2000);
-				reboot_device(FASTBOOT_MODE);
+				reboot_device(FASTBOOT_MODE); */
 
 				return;
 			}
@@ -1347,10 +1378,19 @@ void eval_command(void)
 				vpart_resize_asize();
 				vpart_commit();
 
-				// Auto reboot to load new PTABLE layout
+				/* Load new PTABLE layout without rebooting */
+				printf("\n   Above PTABLE layout has been successfully loaded.\
+					\n   Returning to MAIN MENU in a few seconds...");
+				ptable_re_init();
+				thread_sleep(5000);
+				active_menu = &main_menu;
+				redraw_menu();
+				selector_enable();
+
+				/* Auto reboot to load new PTABLE layout
 				printf("\n   Device will reboot in 2s for changes to take place.");
 				thread_sleep(2000);
-				reboot_device(FASTBOOT_MODE);
+				reboot_device(FASTBOOT_MODE); */
 
 				return;
 			}
@@ -1512,63 +1552,11 @@ void init_menu()
 	add_menu_item(&main_menu, "   POWERDOWN"     , "acpu_pawn");
 	add_menu_item(&main_menu, "   INFO"       , "goto_about");
 
-	about_menu.top_offset    = 0;
-	about_menu.bottom_offset = 0;
-	about_menu.selectedi     = 0;
-	about_menu.maxarl	= 0;
-	about_menu.goback	= 0;
-
-	// koko : Add INFO , NAND INFO, CREDITS, HELP 
 	strcpy( about_menu.MenuId, "INFO" );
 	strcpy( about_menu.backCommand, "goto_main" );
 
-	add_menu_item(&about_menu, "   NAND INFO", "prnt_nand");
-	add_menu_item(&about_menu, "   CREDITS", "goto_credits");
-	add_menu_item(&about_menu, "   HELP", "goto_help");
-	
-	strcpy( cred_menu.MenuId, "CREDITS" );
-	strcpy( cred_menu.backCommand, "goto_about" );
-
-	strcpy( help_menu.MenuId, "HELP" );
-	strcpy( help_menu.backCommand, "goto_about" );
-
-	sett_menu.top_offset    = 0;
-	sett_menu.bottom_offset = 0;
-	sett_menu.selectedi     = 0;
-	sett_menu.maxarl	= 0;
-	sett_menu.goback	= 0;
-
 	strcpy( sett_menu.MenuId, "SETTINGS" );
 	strcpy( sett_menu.backCommand, "goto_main" );
-	
-	/* koko : Remove	PARSE_TAG_MSM_WIFI_FROM_SPL from SETTINGS items
-		  Add		REARRANGE PARTITIONS, FORMAT NAND, ADD/REMOVE sBOOT, etc */
-	add_menu_item(&sett_menu, "   RESIZE PARTITIONS", "goto_rept");
-	add_menu_item(&sett_menu, "   REARRANGE PARTITIONS", "goto_rear");
-	add_menu_item(&sett_menu, "   PRINT PARTITION TABLE", "prnt_stat");
-	if( bad_blocks_collect(ptable_find(flash_get_vptable(), "task29")) > 0 )
-		add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE", "prnt_bblocks");
-
-	add_menu_item(&sett_menu, "   FORMAT NAND", "format_nand");
-	//add_menu_item(&sett_menu, "   FACTORY DATA RESET", "reset_data");
-	if (vpart_partition_exist("sboot"))
-		add_menu_item(&sett_menu,"   REMOVE sBOOT","disable_sboot");
-	else
-		add_menu_item(&sett_menu,"   ADD sBOOT","enable_sboot");
-	
-	if (vparts.extrom_enabled)
-		add_menu_item(&sett_menu,"   DISABLE ExtROM","disable_extrom");
-	else
-		add_menu_item(&sett_menu,"   ENABLE ExtROM","enable_extrom");
-	
-	/* koko : Added option to invert screen colors */
-	add_menu_item(&sett_menu, "   INVERT SCREEN COLORS", "invert_colors");
-
-	strcpy( rept_menu.MenuId, "RESIZE PARTITIONS" );
-	strcpy( rept_menu.backCommand, "goto_sett" );
-
-	strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
-	strcpy( rear_menu.backCommand, "goto_sett" );
 		
 	active_menu = &main_menu;
 	redraw_menu();
@@ -2608,30 +2596,24 @@ static int update_header_str(void *arg)
 void aboot_init(const struct app_descriptor *app)
 {
 	inverted = false;
-	if (target_is_emmc_boot())
-	{
-		page_size = 2048;
-		page_mask = page_size - 1;
-	}
-	else
-	{
-		page_size = flash_page_size();
-		page_mask = page_size - 1;
-	}
+	page_size = flash_page_size();
+	page_mask = page_size - 1;
 
 	/* Check if we should do something other than booting up */
-	if (keys_get_state(keys[6]) != 0)
+	if (keys_get_state(keys[6]) != 0) //[KEY_HOME] pressed => boot recovery
 		boot_into_recovery = 1;
-	if (keys_get_state(keys[5]) != 0)
+	if (keys_get_state(keys[5]) != 0) //[KEY_BACK] pressed => clk menu
 		goto bmenu;
-	if (keys_get_state(keys[2]) != 0)
-		display_init();
+	if (keys_get_state(keys[2]) != 0) //[KEY_SOFT1] pressed => boot sboot
+        	boot_into_sboot = 1;
 
  	if (check_reboot_mode() == RECOVERY_MODE)
  		boot_into_recovery = 1;
- 	else if(check_reboot_mode() == FASTBOOT_MODE) 
+ 	else if(check_reboot_mode() == FASTBOOT_MODE)
 		goto bmenu;
-
+	//else if(check_reboot_mode() == SBOOT_MODE)
+	//	boot_into_sboot = 1;
+	
 	if (boot_into_recovery == 1)
 		recovery_init();
 
