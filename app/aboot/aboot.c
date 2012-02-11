@@ -465,6 +465,7 @@ void selector_enable(void)
 }
 
 void add_menu_item(struct menu *xmenu,const char *name,const char *command);
+void change_menu_item(struct menu *xmenu,const char *oldname,const char *newname,const char *newcommand);
 
 /* koko: Credits added in Main Menu/Info items */
 void cmd_oem_credits(void)
@@ -578,37 +579,6 @@ void eval_command(void)
 	}
 	else if (!memcmp(command,"goto_sett", strlen(command)))
 	{
-		sett_menu.top_offset    = 0;
-		sett_menu.bottom_offset = 0;
-		sett_menu.maxarl	= 0;
-		sett_menu.goback	= 0;
-	
-		add_menu_item(&sett_menu, "   RESIZE PARTITIONS", "goto_rept");
-		add_menu_item(&sett_menu, "   REARRANGE PARTITIONS", "goto_rear");
-		add_menu_item(&sett_menu, "   PRINT PARTITION TABLE", "prnt_stat");
-		if( bad_blocks_collect(ptable_find(flash_get_vptable(), "task29")) > 0 ){
-			add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE", "prnt_bblocks");
-		}
-		add_menu_item(&sett_menu, "   FORMAT NAND", "format_nand");
-		//add_menu_item(&sett_menu, "   FACTORY DATA RESET", "reset_data");
-		if (vpart_partition_exist("sboot")){
-			add_menu_item(&sett_menu,"   REMOVE sBOOT","disable_sboot");
-		}else{
-			add_menu_item(&sett_menu,"   ADD sBOOT","enable_sboot");
-		}
-		if (vparts.extrom_enabled){
-			add_menu_item(&sett_menu,"   DISABLE ExtROM","disable_extrom");
-		}else{
-			add_menu_item(&sett_menu,"   ENABLE ExtROM","enable_extrom");
-		}
-		add_menu_item(&sett_menu, "   INVERT SCREEN COLORS", "invert_colors");
-
-		strcpy( rept_menu.MenuId, "RESIZE PARTITIONS" );
-		strcpy( rept_menu.backCommand, "goto_sett" );
-	
-		strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
-		strcpy( rear_menu.backCommand, "goto_sett" );
-	
 		/* koko : Need to link mirrorparts with vparts for option "REARRANGE PARTITIONS" to work.
 			  The linking is done here so that every time the user enters this submenu he resets mirrorparts to vparts.
 			  Check vptable.h for new struct */
@@ -631,22 +601,6 @@ void eval_command(void)
 	/* koko : Added INFO section which hosts CREDITS,HELP AND NAND INFO */
 	else if (!memcmp(command,"goto_about", strlen(command)))
 	{
-		about_menu.top_offset    = 0;
-		about_menu.bottom_offset = 0;
-		about_menu.selectedi     = 0;
-		about_menu.maxarl	= 0;
-		about_menu.goback	= 0;
-	
-		add_menu_item(&about_menu, "   NAND INFO", "prnt_nand");
-		add_menu_item(&about_menu, "   CREDITS", "goto_credits");
-		add_menu_item(&about_menu, "   HELP", "goto_help");
-		
-		strcpy( cred_menu.MenuId, "CREDITS" );
-		strcpy( cred_menu.backCommand, "goto_about" );
-	
-		strcpy( help_menu.MenuId, "HELP" );
-		strcpy( help_menu.backCommand, "goto_about" );
-
 		active_menu = &about_menu;
 		redraw_menu();
 		selector_enable();
@@ -692,6 +646,8 @@ void eval_command(void)
 	/* koko : Enabling ExtROM will automatically use the last 24 MB for cache */
 	else if (!memcmp(command,"enable_extrom", strlen(command)))
 	{
+		active_menu = &sett_menu;
+		change_menu_item(&sett_menu, "   ENABLE ExtROM", "   DISABLE ExtROM", "disable_extrom");
 		redraw_menu();
 
 		/* Delete cache 						-> free		(cache size)		MB
@@ -738,6 +694,8 @@ void eval_command(void)
 	/* koko : Disabling ExtROM will automatically resize cache */
 	else if (!memcmp(command,"disable_extrom", strlen(command)))
 	{
+		active_menu = &sett_menu;
+		change_menu_item(&sett_menu, "   DISABLE ExtROM", "   ENABLE ExtROM", "enable_extrom");
 		redraw_menu();
 
 		/* Delete cache 						-> free		(cache size)		MB
@@ -784,7 +742,6 @@ void eval_command(void)
 
 		vpart_resize_asize();
 		vpart_commit();
-
 
       		/* Load new PTABLE layout without rebooting */
       		printf("\n   New PTABLE layout has been successfully loaded.\
@@ -891,10 +848,11 @@ void eval_command(void)
 	else if (!memcmp(command,"enable_sboot", strlen(command)))
 	{
 		active_menu = &sett_menu;
+		change_menu_item(&sett_menu, "   ADD sBOOT", "   REMOVE sBOOT", "disable_sboot");
 		redraw_menu();
+
 		char name_and_size[64];
 		vpart_clear();
-
 		for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 		{
 			if(strlen( mirrorparts.pdef[i].name ) != 0)
@@ -945,6 +903,7 @@ void eval_command(void)
 	else if (!memcmp(command,"disable_sboot", strlen(command)))
 	{
 		active_menu = &sett_menu;
+		change_menu_item(&sett_menu, "   REMOVE sBOOT", "   ADD sBOOT", "enable_sboot");
 		redraw_menu();
 		// Use the freed space for userdata by default
 		int new_data_size=(int)( (vpart_partition_size("userdata")/get_blk_per_mb()) + (vpart_partition_size("sboot")/get_blk_per_mb()) );
@@ -958,7 +917,7 @@ void eval_command(void)
 		vpart_commit();
 		vpart_read();
 		vpart_list();
-
+		
       		/* Load new PTABLE layout without rebooting */
       		printf("\n   Above PTABLE layout has been successfully loaded.\
 			\n   Returning to MAIN MENU in a few seconds...");
@@ -1529,6 +1488,20 @@ void add_menu_item(struct menu *xmenu,const char *name,const char *command)
 	return;
 }
 
+/* koko : Change menu item's name and command */
+void change_menu_item(struct menu *xmenu,const char *oldname,const char *newname,const char *newcommand)
+{
+      	for (int i = 0; i < xmenu->maxarl; i++)
+	{
+      		if (!memcmp(xmenu->item[i].mTitle, oldname, strlen(xmenu->item[i].mTitle)))
+		{
+      			strcpy(xmenu->item[i].mTitle, newname);
+      			strcpy(xmenu->item[i].command, newcommand);
+      		}
+      	}
+	return;
+}
+
 /* koko : Added "   "(3 spaces) in front of each item's Name 
 	  because this way the "   "(3 spaces) can be changed to ">> " for the new selection method */
 void init_menu()
@@ -1552,13 +1525,61 @@ void init_menu()
 	add_menu_item(&main_menu, "   POWERDOWN"     , "acpu_pawn");
 	add_menu_item(&main_menu, "   INFO"       , "goto_about");
 
+	about_menu.top_offset    = 0;
+      	about_menu.bottom_offset = 0;
+      	about_menu.selectedi     = 0;
+      	about_menu.maxarl	= 0;
+      	about_menu.goback	= 0;
+
 	strcpy( about_menu.MenuId, "INFO" );
 	strcpy( about_menu.backCommand, "goto_main" );
+	
+      	add_menu_item(&about_menu, "   NAND INFO", "prnt_nand");
+      	add_menu_item(&about_menu, "   CREDITS", "goto_credits");
+      	add_menu_item(&about_menu, "   HELP", "goto_help");
+      	
+      	strcpy( cred_menu.MenuId, "CREDITS" );
+      	strcpy( cred_menu.backCommand, "goto_about" );
+      
+      	strcpy( help_menu.MenuId, "HELP" );
+      	strcpy( help_menu.backCommand, "goto_about" );
+	
+	sett_menu.top_offset    = 0;
+      	sett_menu.bottom_offset = 0;
+	sett_menu.selectedi     = 0;
+      	sett_menu.maxarl	= 0;
+      	sett_menu.goback	= 0;
 
 	strcpy( sett_menu.MenuId, "SETTINGS" );
 	strcpy( sett_menu.backCommand, "goto_main" );
-		
-	active_menu = &main_menu;
+      
+      	add_menu_item(&sett_menu, "   RESIZE PARTITIONS", "goto_rept");
+      	add_menu_item(&sett_menu, "   REARRANGE PARTITIONS", "goto_rear");
+      	add_menu_item(&sett_menu, "   PRINT PARTITION TABLE", "prnt_stat");
+      	if( bad_blocks_collect(ptable_find(flash_get_vptable(), "task29")) > 0 ){
+      		add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE", "prnt_bblocks");
+      	}
+      	add_menu_item(&sett_menu, "   FORMAT NAND", "format_nand");
+      	//add_menu_item(&sett_menu, "   FACTORY DATA RESET", "reset_data");
+      	if (vpart_partition_exist("sboot")){
+      		add_menu_item(&sett_menu,"   REMOVE sBOOT","disable_sboot");
+      	}else{
+      		add_menu_item(&sett_menu,"   ADD sBOOT","enable_sboot");
+      	}
+      	if (vparts.extrom_enabled){
+      		add_menu_item(&sett_menu,"   DISABLE ExtROM","disable_extrom");
+      	}else{
+      		add_menu_item(&sett_menu,"   ENABLE ExtROM","enable_extrom");
+      	}
+      	add_menu_item(&sett_menu, "   INVERT SCREEN COLORS", "invert_colors");
+
+      	strcpy( rept_menu.MenuId, "RESIZE PARTITIONS" );
+      	strcpy( rept_menu.backCommand, "goto_sett" );
+      
+      	strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
+      	strcpy( rear_menu.backCommand, "goto_sett" );
+      
+      	active_menu = &main_menu;
 	redraw_menu();
 	selector_enable();
 	start_keylistener();
