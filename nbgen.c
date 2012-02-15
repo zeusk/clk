@@ -14,6 +14,11 @@
 
 #define ARRAYSIZE( array ) ( sizeof( array ) / sizeof( array[0] ) )
 
+#define TAG_INFO	"DEVINFO"
+#define PART_DEFAULT	"recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5"
+
+int noParts;
+
 struct NbgPart
 {
 	char fileName[256];
@@ -29,7 +34,7 @@ struct NbgData
 	char header2[0x800];
 	struct NbgPart parts[16];
 	int noParts;
-};
+}data;
 
 struct PartEntry
 {
@@ -47,7 +52,7 @@ struct PartEntry
 
 struct part_def
 {
-	char name[32];								// partition name (identifier in mtd device)
+	char name[16];					// partition name (identifier in mtd device)
 	short size __attribute__ ((aligned(4)));	// size in blocks 1Mb = 8 Blocks
 	bool asize __attribute__ ((aligned(4)));	// auto-size and use all available space 1=yes 0=no
 };
@@ -57,17 +62,10 @@ struct vpartitions
 	char tag[7] __attribute__ ((aligned(4)));
 	struct part_def pdef[12];
 	short extrom_enabled __attribute__ ((aligned(4)));
-	short size_fixed_due_to_bad_blocks __attribute__ ((aligned(4)));
-};
-
-int			noParts;
-struct vpartitions	vparts;
-struct NbgData		data;
-
-#define TAG_VPTABLE	"VPTABLE"
-/* koko : Changed default ptable so that cache is last part - useful when user enables ExtROM because it can be used for cache
-									       using it for userdata or system is not safe [corrupting data] */
-#define PART_DEFAULT	"recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5"
+	short size_fixed __attribute__ ((aligned(4)));
+	short inverted_colors __attribute__ ((aligned(4)));
+	short show_startup_info __attribute__ ((aligned(4)));
+}vparts;
 
 int Blocks(size_t bytes)
 {
@@ -481,9 +479,11 @@ int main(int argc, char* argv[])
 	noParts = 0;
 	memset( &vparts, 0, sizeof( vparts ) );
 
-	strcpy( vparts.tag, TAG_VPTABLE );
+	strcpy( vparts.tag, TAG_INFO );
 	vparts.extrom_enabled = extRom;
-	vparts.size_fixed_due_to_bad_blocks = 0;
+	vparts.size_fixed = 0;
+	vparts.inverted_colors = 0;
+	vparts.show_startup_info = 0;
 
 	// Recovery partition
 	if ( FillRecoveryPart( recoveryFile ) == -1 )

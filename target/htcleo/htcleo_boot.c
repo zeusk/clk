@@ -31,3 +31,10 @@ void htcleo_boot(void* kernel,unsigned machtype,void* tags)
 	htcleo_disable_interrupts();
 	htcleo_boot_s(kernel, machtype, tags);
 }
+
+void htcleo_flash(void);
+unsigned target_flashlight(void)
+{
+	htcleo_flash();
+	return ((unsigned) 500);
+}

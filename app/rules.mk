@@ -4,4 +4,4 @@ OBJS += \
 	$(LOCAL_DIR)/app.o
 MODULES += \
 	lib/ptable \
-	lib/vptable
+	lib/devinfo

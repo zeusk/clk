@@ -37,11 +37,11 @@
  */
 #define MAX_PTENTRY_NAME	16
 #define MAX_PTABLE_PARTS	32
-
 #define TYPE_MODEM_PARTITION	1
 #define TYPE_APPS_PARTITION	0
 #define PERM_NON_WRITEABLE	0
 #define PERM_WRITEABLE		1
+
 struct ptentry
 {
 	char name[MAX_PTENTRY_NAME];
@@ -59,20 +59,19 @@ struct ptable
 };
 
 /* koko : Collect bad blocks */
-struct b_blocks
+struct block_info
 {
 	char partition[MAX_PTENTRY_NAME];
-	unsigned block_pos;
+	unsigned pos;
 	unsigned pos_from_pstart;
 	unsigned pos_from_pend;
 };
-struct m_b_blocks
+struct btable
 {
-	struct b_blocks bad_blocks[64];
+	struct block_info blocks[64];
+	unsigned int *block_status;
 	int count;
-};
-struct m_b_blocks marked_bad_blocks;
-int bad_block_exists_in_part(const char *pName);
+}block_tbl;
 int num_of_bad_blocks_in_part(const char *pName);
 int small_part_with_bad_blocks_exists();
 

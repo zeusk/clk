@@ -11,7 +11,7 @@
 #include <dev/gpio_keypad.h>
 #include <kernel/thread.h>
 #include <lib/ptable.h>
-#include <lib/vptable.h>
+#include <lib/devinfo.h>
 #include <dev/fbcon.h>
 #include <dev/flash.h>
 #include <smem.h>
@@ -22,7 +22,7 @@
 #define FASTBOOT_MODE   0x77665500
 
 static struct ptable flash_ptable;
-static struct ptable flash_vptable;
+static struct ptable flash_devinfo;
 
 extern unsigned boot_into_recovery;
 extern unsigned blocks_per_mb;
@@ -66,7 +66,7 @@ int find_start_block()
 	unsigned page_size = flash_page_size();
 
 	// Get ROMHDR partition
-	struct ptentry *ptn = ptable_find( &flash_vptable, PTN_ROMHDR );
+	struct ptentry *ptn = ptable_find( &flash_devinfo, PTN_ROMHDR );
 	if ( ptn == NULL )
 	{
 		dprintf( CRITICAL, "ERROR: ROMHDR partition not found!!!" );
@@ -148,12 +148,12 @@ void target_init(void)
 	blocks_per_mb	= ( 1024 * 1024 ) / flash_info->block_size;
 
 	//////////////////////////////////////////////////////////////////////////
-	// VPTABLE
+	// DEVINFO
 
-	ptable_init( &flash_vptable );
+	ptable_init( &flash_devinfo );
 
 	// ROM header partition (read only)
-	ptable_add( &flash_vptable, PTN_ROMHDR, HTCLEO_ROM_OFFSET, 0x2, 0, TYPE_APPS_PARTITION, PERM_NON_WRITEABLE );
+	ptable_add( &flash_devinfo, PTN_ROMHDR, HTCLEO_ROM_OFFSET, 0x2, 0, TYPE_APPS_PARTITION, PERM_NON_WRITEABLE );
 
 	// Find free ROM start block
 	if ( find_start_block() == -1 )
@@ -169,18 +169,18 @@ void target_init(void)
 		return;
 	}
 
-	// VPTABLE partition (1block = 128KBytes enough for VPTABLE)
-	ptable_add( &flash_vptable, PTN_VPTABLE, flash_start_blk++, 1, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+	// DEVINFO partition (1block = 128KBytes)
+	ptable_add( &flash_devinfo, PTN_DEV_INF, flash_start_blk++, 1, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 
 	// Calculate remaining flash size
 	flash_size_blk = nand_num_blocks - flash_start_blk;
 
 	// task29 partition (to format all partitions at once)
-	ptable_add( &flash_vptable, PTN_TASK29, flash_start_blk, flash_size_blk, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+	ptable_add( &flash_devinfo, PTN_TASK29, flash_start_blk, flash_size_blk, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 
-	flash_set_vptable( &flash_vptable );
+	flash_set_vptable( &flash_devinfo );
 
-	init_vpart();
+	init_device();
 
 	//////////////////////////////////////////////////////////////////////////
 	// PTABLE
@@ -193,14 +193,14 @@ void target_init(void)
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
 		// Valid partition?
-		if ( strlen( vparts.pdef[i].name ) == 0 )
+		if ( strlen( device_info.partition[i].name ) == 0 )
 			break;
 
 		// Add partition
-		ptable_add( &flash_ptable, vparts.pdef[i].name, start_blk, vparts.pdef[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+		ptable_add( &flash_ptable, device_info.partition[i].name, start_blk, device_info.partition[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 		
 		// Skip to next free block
-		start_blk += vparts.pdef[i].size;
+		start_blk += device_info.partition[i].size;
 	}
 	
 	flash_set_ptable( &flash_ptable );
@@ -216,10 +216,10 @@ void ptable_re_init(void)
 
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
-		if ( strlen( vparts.pdef[i].name ) == 0 )
+		if ( strlen( device_info.partition[i].name ) == 0 )
 			break;
-		ptable_add( &flash_newptable, vparts.pdef[i].name, start_blk, vparts.pdef[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
-		start_blk += vparts.pdef[i].size;
+		ptable_add( &flash_newptable, device_info.partition[i].name, start_blk, device_info.partition[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+		start_blk += device_info.partition[i].size;
 	}
 	flash_ptable = flash_newptable;
 }
@@ -239,6 +239,11 @@ void target_early_init(void)
 	writel(0xe590f004, 4); //ldr	r15, [r0, #4]
 }
 
+unsigned target_support_flashlight(void)
+{
+	return 1;
+}
+
 unsigned board_machtype(void)
 {
     return LINUX_MACHTYPE;
@@ -249,7 +254,7 @@ void reboot_device(unsigned reboot_reason)
 	fill_screen(0x0000);
 	writel(reboot_reason, 0x2FFB0000);
 	writel(reboot_reason^0x004b4c63, 0x2FFB0004); //XOR with cLK signature
-    reboot(reboot_reason);
+    	reboot(reboot_reason);
 }
 
 unsigned get_boot_reason(void)

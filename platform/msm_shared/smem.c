@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <platform/iomap.h>
 
-#include "smem.h"
+#include <smem.h>
 
 static struct smem *smem = (void *)(MSM_SHARED_BASE);
 

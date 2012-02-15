@@ -31,7 +31,7 @@
 #include <platform/iomap.h>
 #include <dev/gpio.h>
 
-#include "gpio_hw.h"
+#include <gpio_hw.h>
 
 typedef struct gpioregs gpioregs;
 

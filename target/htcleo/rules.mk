@@ -34,7 +34,7 @@ LDFLAGS += -EL
 MODULES += \
 	dev/keys \
 	lib/ptable \
-	lib/vptable
+	lib/devinfo
 
 DEFINES += \
 	MEMBASE=$(MEMBASE)\

@@ -37,8 +37,8 @@
 #include <lib/ptable.h>
 #include <dev/keys.h>
 
-#include "recovery.h"
-#include "bootimg.h"
+#include <recovery.h>
+#include <bootimg.h>
 
 static const int MISC_PAGES = 3;			// number of pages to save
 static const int MISC_COMMAND_PAGE = 1;		// bootloader command is this page

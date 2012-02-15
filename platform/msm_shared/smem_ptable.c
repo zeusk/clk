@@ -35,7 +35,7 @@
 #include <platform/iomap.h>
 #include <lib/ptable.h>
 
-#include "smem.h"
+#include <smem.h>
 
 struct smem_ptn {
 	char name[16];

@@ -59,10 +59,10 @@
 #include <lib/ptable.h>
 #include <lib/devinfo.h>
 
-#include "bootimg.h"
-#include "fastboot.h"
-#include "recovery.h"
-#include "version.h"
+#include <bootimg.h>
+#include <fastboot.h>
+#include <recovery.h>
+#include <version.h>
 
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)

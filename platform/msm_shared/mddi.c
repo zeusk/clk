@@ -36,7 +36,7 @@
 #include <target/display.h>
 #include <platform/timer.h>
 
-#include "mddi_hw.h"
+#include <mddi_hw.h>
 
 static mddi_llentry *mlist = NULL;
 static mddi_llentry *mlist_remote_write = NULL;

@@ -2,7 +2,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <dev/fbcon.h>
-#include "font8x16.h"
+#include <font8x16.h>
 #include <string.h>
 #include <splash.h>
 

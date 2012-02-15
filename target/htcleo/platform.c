@@ -1,4 +1,3 @@
-
 #include <reg.h>
 #include <dev/fbcon.h>
 #include "target/display.h"
@@ -14,7 +13,6 @@ void platform_early_init(void)
 
 void platform_init(void)
 {
-	inverted = false;
 	dprintf(INFO, "platform_init()\n");
 }
 
@@ -39,4 +37,3 @@ void display_init(void)
 	fbcon_setup(&fb_cfg);
 	fbcon_clear();
 }
-

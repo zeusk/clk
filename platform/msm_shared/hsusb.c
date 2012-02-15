@@ -42,7 +42,7 @@
 
 #include <dev/udc.h>
 
-#include "hsusb.h"
+#include <hsusb.h>
 
 int charger_usb_disconnected(void);
 int charger_usb_i(unsigned current);
