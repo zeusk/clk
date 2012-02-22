@@ -52,7 +52,7 @@ struct PartEntry
 
 struct part_def
 {
-	char name[16];					// partition name (identifier in mtd device)
+	char name[32];					// partition name (identifier in mtd device)
 	short size __attribute__ ((aligned(4)));	// size in blocks 1Mb = 8 Blocks
 	bool asize __attribute__ ((aligned(4)));	// auto-size and use all available space 1=yes 0=no
 };

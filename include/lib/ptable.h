@@ -62,6 +62,7 @@ struct ptable
 struct block_info
 {
 	char partition[MAX_PTENTRY_NAME];
+	int is_marked;
 	unsigned pos;
 	unsigned pos_from_pstart;
 	unsigned pos_from_pend;

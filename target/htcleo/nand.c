@@ -115,39 +115,38 @@ struct flash_identification {
 	unsigned pagesize;
 	unsigned blksize;
 	unsigned oobsize;
+	char man[32];
 };
 
 static struct flash_identification supported_flash[] =
 {
-	/* Flash ID	ID Mask Density(MB)  Wid Pgsz	Blksz	oobsz 	Manuf */
-	{0x00000000, 0xFFFFFFFF,		 0, 0,	0,		 0,  0}, /*ONFI*/
-	{0x1500aaec, 0xFF00FFFF, (256<<20), 0, 2048, (2048<<6), 64}, /*Sams*/
-	{0x5500baec, 0xFF00FFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Sams*/
-	{0x1500aa98, 0xFFFFFFFF, (256<<20), 0, 2048, (2048<<6), 64}, /*Tosh*/
-	{0x5500ba98, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Tosh*/
-	{0xd580b12c, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Micr*/
-	{0x5590bc2c, 0xFFFFFFFF, (512<<20), 1, 2048, (2048<<6), 64}, /*Micr*/
-	{0x1580aa2c, 0xFFFFFFFF, (256<<20), 0, 2048, (2048<<6), 64}, /*Micr*/
-	{0x1590aa2c, 0xFFFFFFFF, (256<<20), 0, 2048, (2048<<6), 64}, /*Micr*/
-	{0x1590ac2c, 0xFFFFFFFF, (512<<20), 0, 2048, (2048<<6), 64}, /*Micr*/
-	{0x5580baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Hynx*/
-	{0x5510baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Hynx*/
-	{0x6600bcec, 0xFF00FFFF, (512<<20), 1, 4096, (4096<<6), 128}, /*Sams*/
+	/*Flash ID	ID Mask		Density(MB)  	Wid 	Pgsz	Blksz		oobsz	Manuf */
+	{0x00000000,	0xFFFFFFFF,	0,		0,	0,	0,		0,	"ONFI"},
+	{0x1500aaec,	0xFF00FFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Sams"},
+	{0x5500baec,	0xFF00FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Sams"},
+	{0x1500aa98,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Tosh"},
+	{0x5500ba98,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Tosh"},
+	{0xd580b12c,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Micr"},
+	{0x5590bc2c,	0xFFFFFFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Micr"},
+	{0x1580aa2c,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
+	{0x1590aa2c,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
+	{0x1590ac2c,	0xFFFFFFFF,	(512<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
+	{0x5580baad,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynx"},
+	{0x5510baad,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynx"},
+	{0x6600bcec,	0xFF00FFFF,	(512<<20),	1,	4096,	(4096<<6),	128,	"Sams"},
+	{0x0000aaec,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*2Gbit*/
+	{0x0000acec,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*4Gbit*/
+	{0x0000bcec,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*4Gbit*/
+	{0x6601b3ec,	0xFFFFFFFF,	(1024<<20),	1,	4096,	(4096<<6),	128,	"Samsung"},	/*8Gbit 4Kpage*/
+	{0x0000b3ec,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*8Gbit*/
+	{0x0000ba2c,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*2Gbit*/
+	{0x0000bc2c,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*4Gbit*/
+	{0x0000b32c,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*8Gbit*/
+	{0x0000baad,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*2Gbit*/
+	{0x0000bcad,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*4Gbit*/
+	{0x0000b3ad,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*8Gbit*/
 
-	/*added from kernel nand */
-	{0x0000aaec, 0x0000FFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Samsung 2Gbit*/
-	{0x0000acec, 0x0000FFFF, (512<<20), 1, 2048, (2048<<6), 64}, /*Samsung 4Gbit*/
-	{0x0000bcec, 0x0000FFFF, (512<<20), 1, 2048, (2048<<6), 64}, /*Samsung 4Gbit*/
-	{0x6601b3ec, 0xFFFFFFFF, (1024<<20),1, 4096, (4096<<6), 128}, /*Samsung 8Gbit 4Kpage*/
-	{0x0000b3ec, 0x0000FFFF, (1024<<20),1, 2048, (2048<<6), 64}, /*Samsung 8Gbit*/
-	{0x0000ba2c, 0x0000FFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Micron 2Gbit*/
-	{0x0000bc2c, 0x0000FFFF, (512<<20), 1, 2048, (2048<<6), 64}, /*Micron 4Gbit*/
-	{0x0000b32c, 0x0000FFFF, (1024<<20),1, 2048, (2048<<6), 64}, /*Micron 8Gbit*/
-	{0x0000baad, 0x0000FFFF, (256<<20), 1, 2048, (2048<<6), 64}, /*Hynix 2Gbit*/
-	{0x0000bcad, 0x0000FFFF, (512<<20), 1, 2048, (2048<<6), 64}, /*Hynix 4Gbit*/
-	{0x0000b3ad, 0x0000FFFF, (1024<<20),1, 2048, (2048<<6), 64}, /*Hynix 8Gbit*/
-
-	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash	  */
+	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash	  	*/
 	/* Note: The First row will be filled at runtime during ONFI probe	*/
 
 };
@@ -833,6 +832,7 @@ static void flash_read_id(dmov_s *cmdlist, unsigned *ptrlist)
 		flash_pagesize = flash_info.page_size;
 		flash_info.block_size = supported_flash[index].blksize;
 		flash_info.spare_size = supported_flash[index].oobsize;
+		strcpy( flash_info.manufactory, supported_flash[index].man );
 		if (flash_info.block_size && flash_info.page_size)
 		{
 			flash_info.num_blocks = supported_flash[index].density;
@@ -956,6 +956,7 @@ int flash_erase(struct ptentry *ptn)
  * .block_status has three states :  1: The block is marked as bad
  * 				     2: Operation error, a mpu error, or the erase success bit was not set
  *			     	     0: The block is good
+ * .is_marked indicates if the block is marked as bad
  * .pos is the location of the bad block
  * .pos_from_pstart is the space between the partition's start and the bad block's location
  * .pos_from_pend is the space between the bad block's location and the partition's end
@@ -969,12 +970,12 @@ int bad_block_table(struct ptentry *ptn)
 	block_tbl.count=0;
 	struct ptable *ptable;
 	ptable = flash_get_ptable();
-	int block_stat=0;
+	int _isbad=0;
 	set_nand_configuration(ptn->type);
 	while(i-- > 0)
 	{
-		block_stat=flash_nand_block_isbad(flash_cmdlist, flash_ptrlist, block * 64);
-		if(block_stat>0){
+		_isbad=flash_nand_block_isbad(flash_cmdlist, flash_ptrlist, block * 64);
+		if(_isbad){
       			for(int j = 0; j < ptable_size(ptable); j++){
       				if( block >= ptable_get(ptable, j)->start ){
 					if(block < (ptable_get(ptable, j)->start + ptable_get(ptable, j)->length)){
@@ -988,11 +989,10 @@ int bad_block_table(struct ptentry *ptn)
       			if(strlen(block_tbl.blocks[block_tbl.count].partition)==0){
       				strcpy( block_tbl.blocks[block_tbl.count].partition, "ExtROM" );
       			}
-			block_tbl.block_status[block] = 1;
+			block_tbl.block_status[block] = (_isbad>0 ? 1 : 2);
 			block_tbl.blocks[block_tbl.count].pos = block;
+			block_tbl.blocks[block_tbl.count].is_marked = (_isbad>0 ? 1 : 0);
 			block_tbl.count++;
-		}else if(block_stat<0){
-			block_tbl.block_status[block] = 2;
 		}else{
 			block_tbl.block_status[block] = 0;
 		}

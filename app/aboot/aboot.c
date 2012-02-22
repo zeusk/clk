@@ -382,7 +382,7 @@ void update_spl_ver(void)
 
 /* koko : Changed the header to display
 				eg: 	cLK 1.7.0.0   |   SPL 2.08.HSPL   |   RADIO 2.15.50.14
-					
+								 NAND flash chipset : Hynix-bs
 								    Total flash size:    512MB
 								      Available size:    421MB
 									      ExtROM: DISABLED
@@ -405,12 +405,12 @@ void draw_clk_header(void)
 	fbcon_setfg(myfg);
 	char expected_byte[] = "3";
 	printf("   |   SPL %s   |   RADIO %s   ", spl_version, radBuffer[0] != expected_byte[0] ? ".........." : radio_version);
-	printf("                                                                                           \
-		Total flash size:   %4iMB   ",(int)( flash_info->num_blocks / get_blk_per_mb() ));
-	printf("                                 \
-		Available size:    %iMB   ", (int)( get_usable_flash_size() / get_blk_per_mb() ));
-	printf("                                         \
-		ExtROM: ");
+	printf("                           NAND flash chipset: %7s-%02X                                \
+		Total flash size:     %4iMB   ",flash_info->manufactory, flash_info->device, (int)( flash_info->num_blocks / get_blk_per_mb() ));
+	printf("                               \
+		Available size:      %iMB   ", (int)( get_usable_flash_size() / get_blk_per_mb() ));
+	printf("                                       \
+		ExtROM:   ");
 	if (device_info.extrom_enabled){
 		fbcon_setfg(mycfg);printf(" ENABLED   ");
 	}else{
@@ -522,14 +522,19 @@ void eval_command(void)
 		printf("    ____________________________________________________ \n\
 			   |                   BAD BLOCK TABLE                  |\n\
 			   |____________________________________________________|\n");
+		printf("   |       |   HOST    |  POSITION  | POSITION |        |\n\
+			   | BLOCK | PARTITION | from START | from END | STATUS |\n");
+		printf("   |=======|===========|============|==========|========|\n");
 		for ( int j = 0; j < block_tbl.count; j++ )
 		{
-      			printf( "   | BLOCK @%4d [%4dMB], (inside %8s boundaries) |\n",
+      			printf( "   | %5d | %9s | %10d | %8d | %6s |\n",
       				block_tbl.blocks[j].pos,
-      				block_tbl.blocks[j].pos/8,
-      				block_tbl.blocks[j].partition);
+      				block_tbl.blocks[j].partition,
+      				block_tbl.blocks[j].pos_from_pstart,
+      				block_tbl.blocks[j].pos_from_pend,
+				block_tbl.blocks[j].is_marked==1 ? "MARKED" : "ERROR");
 		}
-		printf("   |____________________________________________________|   ");
+		printf("   |_______|___________|____________|__________|________|   ");
 		selector_enable();
     	}
 	else if (!memcmp(command,"boot_sbot", strlen(command)))
@@ -673,8 +678,6 @@ void eval_command(void)
 		printf( "\n   Enabling ExtROM..." );
 		device_enable_extrom();
 
-		device_read();
-
 		printf( "\n   Assigning last 24MB of ExtROM to cache...\n" );
 		device_add( "cache:24" );
 
@@ -711,8 +714,6 @@ void eval_command(void)
 
 		printf( "\n   Disabling ExtROM..." );
 		device_disable_extrom();
-
-		device_read();
 
 		if((int)cachesize>24)
 		{
@@ -764,7 +765,9 @@ void eval_command(void)
 			printf( "   ERROR: PTABLE not found!!!\n");
 			return;
 		}
+
 		// Format all partitions except for recovery
+		time_t ct = current_time();
 		for ( int i = 0; i < ptable_size(ptable); i++ )
 		{
 			if(memcmp(ptable_get(ptable, i)->name,"recovery", strlen(ptable_get(ptable, i)->name)))
@@ -773,9 +776,8 @@ void eval_command(void)
 				flash_erase(ptable_get(ptable, i));
 			}
 		}
-		printf("\n   Format completed !\n");
-
-		device_read();
+		ct = current_time() - ct;
+		printf("\n   Format completed in %u ms!\n", (uint)ct);
 
 		selector_enable();
     	}
@@ -902,7 +904,6 @@ void eval_command(void)
 		}
 		device_resize_asize();
 		device_commit();
-		device_read();
 		device_list();
 
 		/* Load new PTABLE layout without rebooting */
@@ -932,7 +933,6 @@ void eval_command(void)
 		}
 		device_resize_asize();
 		device_commit();
-		device_read();
 		device_list();
 		
       		/* Load new PTABLE layout without rebooting */
@@ -2336,19 +2336,22 @@ void prnt_nand_stat(void)
 	printf("    ____________________________________________________ \n\
 		   |                      NAND INFO                     |\n\
 		   |____________________________________________________|\n" );
+	printf("   | ID: 0x%x MAKER: 0x%2x   DEV: 0x%2x TYPE: %dbit |\n",
+		flash_info->id, flash_info->vendor, flash_info->device, (flash_info->type)*8);
+	printf("   |====================================================|\n");
 	printf("   | Flash   block   size: %22i bytes |\n", flash_info->block_size);
 	printf("   | Flash   page    size: %22i bytes |\n", flash_info->page_size);
 	printf("   | Flash   spare   size: %22i bytes |\n", flash_info->spare_size);
-	printf("   | Flash   total   size: %4i block(s)  - %5i MB    |\n",
+	printf("   | Flash   total   size: %4i block(s)  = %5i MB    |\n",
 		flash_info->num_blocks, (int)(flash_info->num_blocks/get_blk_per_mb()));
 	printf("   |====================================================|\n");
-	printf("   | ROM     (0x%x) size: %4i block(s)  - %5i MB    |\n",
+	printf("   | ROM     (0x%x) size: %4i block(s)  = %5i MB    |\n",
 		HTCLEO_ROM_OFFSET, get_usable_flash_size(), (int)(get_usable_flash_size()/get_blk_per_mb()));
-	printf("   | DEVINFO (0x%x) size: %4i block(s)  - %5i KB    |\n",
+	printf("   | DEVINFO (0x%x) size: %4i block(s)  = %5i KB    |\n",
 		ptn->start, ptn->length, (flash_info->block_size/1024));
-	printf("   | PTABLE  (0x%x) size: %4i block(s)  - %5i MB    |\n",
+	printf("   | PTABLE  (0x%x) size: %4i block(s)  = %5i MB    |\n",
 		get_flash_offset(), get_full_flash_size(), (int)(get_full_flash_size()/get_blk_per_mb()));
-	printf("   | ExtROM  (0x%x) size: %4i block(s)  - %5i MB    |\n",
+	printf("   | ExtROM  (0x%x) size: %4i block(s)  = %5i MB    |\n",
 		get_ext_rom_offset(), get_ext_rom_size(), (int)((get_ext_rom_size()/get_blk_per_mb())+1));
 	printf("   |____________________________________________________|\n");
 }
@@ -2543,20 +2546,6 @@ static int boot_info(void *arg)
 	redraw_menu();
 	device_list();
 
-	if( _bad_blocks > 0 )	// Bad blocks detected
-	{			// Show bad blocks to user
-		printf("    ____________________________________________________ \n\
-			   |                   BAD BLOCK TABLE                  |\n\
-			   |____________________________________________________|\n");
-		for ( int j = 0; j < block_tbl.count; j++ )
-		{
-      			printf( "   | BLOCK @%4d [%4dMB], (inside %8s boundaries) |\n",
-      				block_tbl.blocks[j].pos,
-      				block_tbl.blocks[j].pos/8,
-      				block_tbl.blocks[j].partition);
-		}
-		printf("   |____________________________________________________|   ");
-	}
 	run_asize=1;
 	thread_exit(0);
 	return 0;

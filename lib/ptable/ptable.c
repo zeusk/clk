@@ -105,7 +105,7 @@ int num_of_bad_blocks_in_part(const char *pName)
 	int bad_blocks_num=0;
 	for (int i = 0; i < block_tbl.count; i++)
 	{
-		if( (strlen(block_tbl.blocks[i].partition)!=0) && (!memcmp(block_tbl.blocks[i].partition, pName, strlen(pName))) )
+		if( (strlen(block_tbl.blocks[i].partition)!=0) && (!memcmp(block_tbl.blocks[i].partition, pName, strlen(pName))) && (block_tbl.blocks[i].is_marked) )
 			bad_blocks_num++;
 	}
 

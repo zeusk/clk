@@ -31,23 +31,27 @@
 #endif
 #define __PLATFORM_SPLASH_H
 
-/* koko : Replaced androids with "htc HD2" black and white logo */
-
 #ifdef SPLASH_IMAGE_HEIGHT
 #undef SPLASH_IMAGE_HEIGHT
 #endif
-#define  SPLASH_IMAGE_HEIGHT    86
+#define  SPLASH_IMAGE_HEIGHT	86
+
 #ifdef SPLASH_IMAGE_WIDTH
 #undef SPLASH_IMAGE_WIDTH
 #endif
-#define SPLASH_IMAGE_WIDTH    480
+#define SPLASH_IMAGE_WIDTH	480
+
+#ifdef img_sz_rgb888
+#undef img_sz_rgb888
+#endif
+#define img_sz_rgb888		((SPLASH_IMAGE_HEIGHT)*(SPLASH_IMAGE_WIDTH)*3)
 
 #ifdef IMG_SZ_RGB565
 #undef IMG_SZ_RGB565
 #endif
+#define IMG_SZ_RGB565		((SPLASH_IMAGE_HEIGHT)*(SPLASH_IMAGE_WIDTH)*2)
 
-#define IMG_SZ_RGB565 ((SPLASH_IMAGE_HEIGHT)*(SPLASH_IMAGE_WIDTH)*2)
-char imageBuffer[IMG_SZ_RGB565]  = { 
+char imageBuffer[IMG_SZ_RGB565] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -5210,8 +5214,4 @@ char imageBuffer[IMG_SZ_RGB565]  = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-#ifdef img_sz_rgb888
-#undef img_sz_rgb888
-#endif
-#define img_sz_rgb888 ((SPLASH_IMAGE_HEIGHT)*(SPLASH_IMAGE_WIDTH)*3)
 char imageBuffer_rgb888[img_sz_rgb888] = {0xFF};

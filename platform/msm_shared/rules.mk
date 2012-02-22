@@ -15,6 +15,4 @@ OBJS += \
 	$(LOCAL_DIR)/hsusb.o \
 	$(LOCAL_DIR)/jtag_hook.o \
 	$(LOCAL_DIR)/jtag.o \
-	$(LOCAL_DIR)/lcdc.o \
-	$(LOCAL_DIR)/mddi.o \
 	$(LOCAL_DIR)/uart.o

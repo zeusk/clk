@@ -11,7 +11,7 @@
 #define TAG_INFO		"DEVINFO"
 #define PTN_TASK29		"task29"
 
-#define DEV_PART_NAME_SZ	16
+#define DEV_PART_NAME_SZ	32
 #define MAX_NUM_PART		12
 
 extern struct ptable* flash_get_vptable(void);

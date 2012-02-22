@@ -42,6 +42,7 @@ struct flash_info {
 	unsigned block_size;
 	unsigned spare_size;
 	unsigned num_blocks;
+	char manufactory[32];
 };
 
 void flash_init(void);

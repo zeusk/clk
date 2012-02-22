@@ -9,8 +9,8 @@ static unsigned int htcleo_col_gpios[] = { 42, 41, 40 };
 #define KEYMAP_INDEX(row, col) ((row)*ARRAY_SIZE(htcleo_col_gpios) + (col))
 
 static const unsigned short htcleo_keymap[ARRAY_SIZE(htcleo_col_gpios) * ARRAY_SIZE(htcleo_row_gpios)] = {
-	[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEUP,	// Volume Up
-	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,	// Volume Down
+	[KEYMAP_INDEX(0, 0)] = KEY_VOLUMEUP,		// Volume Up
+	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,		// Volume Down
 	[KEYMAP_INDEX(1, 0)] = KEY_SOFT1,		// Windows Button
 	[KEYMAP_INDEX(1, 1)] = KEY_SEND,		// Dial Button
 	[KEYMAP_INDEX(1, 2)] = KEY_CLEAR,		// Hangup Button
