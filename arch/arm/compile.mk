@@ -30,4 +30,3 @@ $(BUILDDIR)/%.o: %.S $(SRCDEPS)
 	@$(MKDIR)
 	@echo compiling $<
 	$(NOECHO)$(CC) $(CFLAGS) $(ASMFLAGS) $(INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@
-

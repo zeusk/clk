@@ -172,52 +172,6 @@ FUNCTION(arch_disable_cache)
 	msr		cpsr, r12
 	ldmfd	sp!, {r4-r11, pc}
 
-/* void arch_enable_cache(uint flags) */
-FUNCTION(arch_enable_cache)
-	stmfd	sp!, {r4-r11, lr}
-
-	mov		r7, r0						// save flags
-
-	mrs		r12, cpsr					// save the old interrupt state
-	.word	0xf10c01c0	/* cpsid iaf */	// interrupts disabled
-	
-.Ldcache_enable:
-	tst		r7, #DCACHE
-	beq		.Licache_enable
-	mrc     p15, 0, r0, c1, c0, 0		// cr1
-	tst		r0, #(1<<2)					// is the dcache already enabled?
-	bne		.Licache_enable
-
-	// invalidate L1 and L2
-	// NOTE: trashes a bunch of registers, can't be spilling stuff to the stack
-	bl		invalidate_cache_v7
-
-#if ARM_WITH_L2
-	// enable the L2, if present
-	mrc     p15, 0, r0, c1, c0, 1		// aux cr1
-	orr		r0, #(1<<1)
-	mcr		p15, 0, r0, c1, c0, 1		// enable L2 dcache
-#endif
-
-	mrc     p15, 0, r0, c1, c0, 0		// cr1
-	orr		r0, #(1<<2)
-	mcr		p15, 0, r0, c1, c0, 0		// enable dcache
-
-.Licache_enable:
-	tst		r7, #ICACHE
-	beq		.Ldone_enable
-
-	mov		r0, #0
-	mcr		p15, 0, r0, c7, c5, 0		// invalidate icache to PoU
-
-	mrc     p15, 0, r0, c1, c0, 0		// cr1
-	orr		r0, #(1<<12)
-	mcr		p15, 0, r0, c1, c0, 0		// enable icache
-
-.Ldone_enable:
-	msr		cpsr, r12
-	ldmfd	sp!, {r4-r11, pc}
-
 // flush & invalidate cache routine, trashes r0-r6, r9-r11
 flush_invalidate_cache_v7:
 	/* from ARMv7 manual, B2-17 */
@@ -318,21 +272,17 @@ invalidate_cache_v7:
 /* shared cache flush routines */
 
 	/* void arch_flush_cache_range(addr_t start, size_t len); */
- FUNCTION(arch_clean_cache_range)
-#if ARM_WITH_CP15
-	add		r2, r0, r1					// calculate the end address
-	bic		r0, #(CACHE_LINE-1)			// align the start with a cache line
- 0:
- 	mcr		p15, 0, r0, c7, c10, 1		// clean cache to PoC by MVA
- 	add		r0, r0, #CACHE_LINE
-	cmp		r0, r2
-	blo		0b
- 	
- 	mov		r0, #0
-	mcr		p15, 0, r0, c7, c10, 4		// data sync barrier
-#endif
- 	bx		lr
+FUNCTION(arch_clean_cache_range)
+0:
+	mcr		p15, 0, r0, c7, c10, 1		// clean cache to PoC by MVA
+	add		r0, r0, #CACHE_LINE
+	subs	r1, r1, #CACHE_LINE
+	bhs		0b
 	
+	mov		r0, #0
+	mcr		p15, 0, r0, c7, c10, 4		// data sync barrier (formerly drain write buffer)
+
+	bx		lr
 
 	/* void arch_flush_invalidate_cache_range(addr_t start, size_t len); */
 FUNCTION(arch_clean_invalidate_cache_range)
@@ -346,6 +296,17 @@ FUNCTION(arch_clean_invalidate_cache_range)
 	mcr		p15, 0, r0, c7, c10, 4		// data sync barrier (formerly drain write buffer)
 
 	bx		lr
+
+	/* void arch_sync_cache_range(addr_t start, size_t len); */
+FUNCTION(arch_sync_cache_range)
+	push    { r14 }
+	bl      arch_clean_cache_range
+
+	mov     r0, #0
+	mcr     p15, 0, r0, c7, c5, 0       // invalidate icache to PoU
+
+	pop     { pc }
+
 #else
 #error unhandled cpu
 #endif
@@ -364,6 +325,9 @@ FUNCTION(arch_clean_cache_range)
 	bx		lr
 
 FUNCTION(arch_clean_invalidate_cache_range)
+	bx		lr
+
+FUNCTION(arch_sync_cache_range)
 	bx		lr
 
 #endif // ARM_WITH_CACHE

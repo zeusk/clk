@@ -21,8 +21,6 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include <asm.h>
-
-
 	/* context switch frame is as follows:
 	 * ulr
 	 * usp
@@ -43,10 +41,8 @@ FUNCTION(arm_context_switch)
 	sub		r3, sp, #(11*4)		/* can't use sp in user mode stm */
 	mov		r12, lr
 	stmia	r3, { r4-r11, r12, r13, r14 }^
-	
 	/* save old sp */
 	str		r3, [r0] 
-
 	/* clear any exlusive locks that the old thread holds */
 #if ARM_ISA_ARMV7
 	/* can clear it directly */
@@ -56,18 +52,15 @@ FUNCTION(arm_context_switch)
 	ldr		r0, =strex_spot
 	strex	r3, r2, [r0]
 #endif
-
 	/* load new regs */
 	ldmia	r1, { r4-r11, r12, r13, r14 }^
 	mov		lr, r12				/* restore lr */
 	add		sp, r1, #(11*4)     /* restore sp */
 	bx		lr
-
 .ltorg
 
 FUNCTION(arm_save_mode_regs)
 	mrs		r1, cpsr
-
 #if ARM_ISA_ARMv6
 	cps		#0x11			/* fiq */
 	str		r13, [r0], #4
@@ -91,13 +84,8 @@ FUNCTION(arm_save_mode_regs)
 	// XXX implement
 	b		.
 #endif
-	
 	msr		cpsr_c, r1
-
 	bx		lr
-
 .data
 strex_spot:
 	.word	0
-	
-

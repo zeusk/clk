@@ -37,7 +37,6 @@ SECTIONS
 	.init : { *(.init) } =0x9090
 	.plt : { *(.plt) }
 
-
 	.rodata : { 
 		*(.rodata .rodata.* .gnu.linkonce.r.*) 
 		. = ALIGN(4);
