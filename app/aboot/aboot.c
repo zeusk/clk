@@ -68,12 +68,6 @@
 #define TARGET(NAME) EXPAND(NAME)
 #define DEFAULT_CMDLINE "";
 
-#ifdef MEMBASE
-#define EMMC_BOOT_IMG_HEADER_ADDR (0xFF000+(MEMBASE))
-#else
-#define EMMC_BOOT_IMG_HEADER_ADDR 0xFF000
-#endif
-
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
@@ -104,7 +98,6 @@ void cmd_flashlight(void);
 void redraw_menu(void);
 void prnt_nand_stat(void);
 
-int target_is_emmc_boot(void);
 int boot_linux_from_flash(void);
 
 int key_listener(void *arg);
@@ -115,16 +108,9 @@ unsigned get_boot_reason(void);
 unsigned check_reboot_mode(void);
 unsigned* target_atag_mem(unsigned* ptr);
 
-unsigned long long mmc_ptn_size (unsigned char * name);
-unsigned long long mmc_ptn_offset (unsigned char * name);
-
-unsigned int mmc_read (unsigned long long data_addr, unsigned int* out, unsigned int data_len);
-unsigned int mmc_write (unsigned long long data_addr, unsigned int data_len, unsigned int* in);
-
 uint16_t keys[] = { KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_SOFT1, KEY_SEND, KEY_CLEAR, KEY_BACK, KEY_HOME };
 uint16_t keyp   = ERR_KEY_CHANGED;
 
-static const char *emmc_cmdline  = " androidboot.emmc=true";
 static const char *battchg_pause = " androidboot.mode=offmode_charging";
 
 static unsigned char buf[4096]; //Equal to max-supported pagesize
@@ -665,8 +651,8 @@ void init_menu()
 	strcpy( main_menu.MenuId, "HBOOT" );
 	strcpy( main_menu.backCommand, "" );
 	
-	add_menu_item(&main_menu, "ANDROID NAND"  , "boot_nand");
-	add_menu_item(&main_menu, "ANDROID EMMC"  , "boot_sbot");
+	add_menu_item(&main_menu, "ANDROID BOOT"  , "boot_nand");
+	add_menu_item(&main_menu, "ANDROID SBOOT"  , "boot_sbot");
 	add_menu_item(&main_menu, "RECOVERY"      , "boot_recv");
 	add_menu_item(&main_menu, "FLASHLIGHT"    , "init_flsh");
 	add_menu_item(&main_menu, "SETTINGS"      , "goto_sett");
@@ -880,8 +866,7 @@ void boot_linux(void *kernel, unsigned *tags,
 {
 	unsigned *ptr = tags;
 	unsigned pcount = 0;
-	/* Unused variable :o */
-	//void (*entry)(unsigned,unsigned,unsigned*) = kernel;
+	void (*entry)(unsigned,unsigned,unsigned*) = kernel;
 	struct ptable *ptable;
 	int cmdline_len = 0;
 	int have_cmdline = 0;
@@ -900,34 +885,27 @@ void boot_linux(void *kernel, unsigned *tags,
 	}
 
 	ptr = target_atag_mem(ptr);
-	if (!target_is_emmc_boot())
+
+	if ((ptable = flash_get_ptable()) && (ptable->count != 0))
 	{
-		/* Skip NAND partition ATAGS for eMMC boot */
-		if ((ptable = flash_get_ptable()) && (ptable->count != 0))
+		int i;
+		for(i=0; i < ptable->count; i++)
 		{
-			int i;
-			for(i=0; i < ptable->count; i++)
-			{
-				struct ptentry *ptn;
-				ptn =  ptable_get(ptable, i);
-				if (ptn->type == TYPE_APPS_PARTITION)
-					pcount++;
-			}
-			*ptr++ = 2 + (pcount * (sizeof(struct atag_ptbl_entry) / sizeof(unsigned)));
-			*ptr++ = 0x4d534d70;
-			for (i = 0; i < ptable->count; ++i)
-				ptentry_to_tag(&ptr, ptable_get(ptable, i));
+			struct ptentry *ptn;
+			ptn =  ptable_get(ptable, i);
+			if (ptn->type == TYPE_APPS_PARTITION)
+				pcount++;
 		}
+		*ptr++ = 2 + (pcount * (sizeof(struct atag_ptbl_entry) / sizeof(unsigned)));
+		*ptr++ = 0x4d534d70;
+		for (i = 0; i < ptable->count; ++i)
+			ptentry_to_tag(&ptr, ptable_get(ptable, i));
 	}
 
 	if (cmdline && cmdline[0])
 	{
 		cmdline_len = strlen(cmdline);
 		have_cmdline = 1;
-	}
-	if (target_is_emmc_boot())
-	{
-		cmdline_len += strlen(emmc_cmdline);
 	}
 	if (target_pause_for_battery_charge())
 	{
@@ -948,13 +926,6 @@ void boot_linux(void *kernel, unsigned *tags,
 		if (have_cmdline)
 		{
 			src = cmdline;
-			while ((*dst++ = *src++));
-		}
-		if (target_is_emmc_boot())
-		{
-			src = emmc_cmdline;
-			if (have_cmdline) --dst;
-			have_cmdline = 1;
 			while ((*dst++ = *src++));
 		}
 		if (pause_at_bootup)
@@ -983,8 +954,8 @@ void boot_linux(void *kernel, unsigned *tags,
 	display_shutdown();
 #endif
 
-	htcleo_boot(kernel, machtype, tags);
-	//entry(0, machtype, tags);
+	target_uninit();
+	entry(0, machtype, tags);
 }
 
 unsigned page_size = 0;
@@ -1124,12 +1095,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	/* ensure commandline is terminated */
 	hdr.cmdline[BOOT_ARGS_SIZE-1] = 0;
-
-	if(target_is_emmc_boot() && hdr.page_size)
-	{
-		page_size = hdr.page_size;
-		page_mask = page_size - 1;
-	}
 
 	kernel_actual = ROUND_TO_PAGE(hdr.kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr.ramdisk_size, page_mask);

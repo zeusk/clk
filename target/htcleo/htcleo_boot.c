@@ -25,9 +25,9 @@ void htcleo_disable_interrupts(void)
 	writel(0, VIC_INT_MASTEREN);
 }
 
-void htcleo_boot_s(void* kernel,unsigned machtype,void* tags);
-void htcleo_boot(void* kernel,unsigned machtype,void* tags)
+void target_uninit_s(void);
+void target_uninit(void)
 {
 	htcleo_disable_interrupts();
-	htcleo_boot_s(kernel, machtype, tags);
+	target_uninit_s();
 }

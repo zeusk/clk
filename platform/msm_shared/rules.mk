@@ -16,8 +16,7 @@ OBJS += \
 	$(LOCAL_DIR)/jtag_hook.o \
 	$(LOCAL_DIR)/jtag.o \
 	$(LOCAL_DIR)/lcdc.o \
-	$(LOCAL_DIR)/mddi.o \
-	$(LOCAL_DIR)/mmc.o
+	$(LOCAL_DIR)/mddi.o
 
 ifeq ($(PLATFORM),msm8x60)
 	OBJS += $(LOCAL_DIR)/mipi_dsi.o \
