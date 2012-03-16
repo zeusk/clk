@@ -70,8 +70,3 @@ __WEAK unsigned target_pause_for_battery_charge(void)
 {
     return 0;
 }
-
-__WEAK unsigned target_support_flashlight(void)
-{
-    return 0;
-}
