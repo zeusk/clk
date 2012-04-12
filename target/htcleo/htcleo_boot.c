@@ -21,20 +21,14 @@ void htcleo_disable_interrupts(void)
 	//disable all
 	writel(0, VIC_INT_EN0);
 	writel(0, VIC_INT_EN1);
+
 	//disable interrupts
 	writel(0, VIC_INT_MASTEREN);
 }
 
-void htcleo_boot_s(void* kernel,unsigned machtype,void* tags);
-void htcleo_boot(void* kernel,unsigned machtype,void* tags)
+void htcleo_boot_s();
+void htcleo_boot()
 {
 	htcleo_disable_interrupts();
-	htcleo_boot_s(kernel, machtype, tags);
-}
-
-void htcleo_flash(void);
-unsigned target_flashlight(void)
-{
-	htcleo_flash();
-	return ((unsigned) 500);
+	htcleo_boot_s();
 }

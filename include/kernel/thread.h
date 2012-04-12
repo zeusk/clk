@@ -102,11 +102,12 @@ void thread_become_idle(void) __NO_RETURN;
 void thread_set_name(const char *name);
 void thread_set_priority(int priority);
 thread_t *thread_create(const char *name, thread_start_routine entry, void *arg, int priority, size_t stack_size);
-status_t thread_resume(thread_t *);
+status_t thread_resume(thread_t *t);
 void thread_exit(int retcode) __NO_RETURN;
-void thread_kill(thread_t *) __NO_RETURN;
+void thread_kill(thread_t *t) __NO_RETURN;
 void thread_sleep(time_t delay);
 
+bool thread_exist_in_list(const char *Thread_Name);
 void dump_thread(thread_t *t);
 void dump_all_threads(void);
 
@@ -174,14 +175,14 @@ typedef struct wait_queue {
 
 /* wait queue primitive */
 /* NOTE: must be inside critical section when using these */
-void wait_queue_init(wait_queue_t *);
+void wait_queue_init(wait_queue_t *wait);
 
 /* 
  * release all the threads on this wait queue with a return code of ERR_OBJECT_DESTROYED.
  * the caller must assure that no other threads are operating on the wait queue during or
  * after the call.
  */
-void wait_queue_destroy(wait_queue_t *, bool reschedule);
+void wait_queue_destroy(wait_queue_t *wait, bool reschedule);
 
 /*
  * block on a wait queue.
@@ -189,15 +190,15 @@ void wait_queue_destroy(wait_queue_t *, bool reschedule);
  * a timeout other than INFINITE_TIME will set abort after the specified time
  * and return ERR_TIMED_OUT. a timeout of 0 will immediately return.
  */
-status_t wait_queue_block(wait_queue_t *, time_t timeout);
+status_t wait_queue_block(wait_queue_t *wait, time_t timeout);
 
 /* 
  * release one or more threads from the wait queue.
  * reschedule = should the system reschedule if any is released.
  * wait_queue_error = what wait_queue_block() should return for the blocking thread.
  */
-int wait_queue_wake_one(wait_queue_t *, bool reschedule, status_t wait_queue_error);
-int wait_queue_wake_all(wait_queue_t *, bool reschedule, status_t wait_queue_error);
+int wait_queue_wake_one(wait_queue_t *wait, bool reschedule, status_t wait_queue_error);
+int wait_queue_wake_all(wait_queue_t *wait, bool reschedule, status_t wait_queue_error);
 
 /* 
  * remove the thread from whatever wait queue it's in.

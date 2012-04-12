@@ -38,6 +38,10 @@
 
 #define writel(v, a) (*REG32(a) = (v))
 #define readl(a) (*REG32(a))
+#define orl(v, a) (*REG32(a) |= (v))
+#define andl(v, a) (*REG32(a) &= (v))
+#define and_orl(andv, orv, a) andl(andv, a); \
+			      orl(orv, a)
 
 #define writeb(v, a) (*REG8(a) = (v))
 #define readb(a) (*REG8(a))

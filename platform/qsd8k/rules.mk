@@ -11,13 +11,12 @@ CPU := generic
 INCLUDES += -I$(LOCAL_DIR)/include
 
 DEVS += fbcon
-MODULES += dev/fbcon
+MODULES += \
+	dev/fbcon
 
 OBJS += \
-	$(LOCAL_DIR)/arch_init.o \
 	$(LOCAL_DIR)/interrupts.o \
-	$(LOCAL_DIR)/gpio.o \
-	$(LOCAL_DIR)/acpuclock.o
+	$(LOCAL_DIR)/gpio.o
 
 LINKER_SCRIPT += $(BUILDDIR)/system-onesegment.ld
 

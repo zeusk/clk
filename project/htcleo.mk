@@ -3,6 +3,8 @@
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
 TARGET := htcleo
+# if basic sd driver is completed, set to 1
+WITH_SDC_DRIVER := 0
 
 MODULES += app/aboot
 

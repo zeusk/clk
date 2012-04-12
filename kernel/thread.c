@@ -499,10 +499,24 @@ void dump_all_threads(void)
 	thread_t *t;
 
 	enter_critical_section();
-	list_for_every_entry(&thread_list, t, thread_t, thread_list_node) {
+	list_for_every_entry(&thread_list, t, thread_t, thread_list_node){
 		dump_thread(t);
 	}
 	exit_critical_section();
+}
+
+bool thread_exist_in_list(const char *Thread_Name)
+{
+	thread_t *t;
+
+	enter_critical_section();
+	list_for_every_entry(&thread_list, t, thread_t, thread_list_node){
+		if(!memcmp(t->name, Thread_Name, strlen(t->name)))
+			return 1;
+	}
+	exit_critical_section();
+
+	return 0;
 }
 
 /* wait queue */

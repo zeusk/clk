@@ -54,6 +54,10 @@ char       *strtok(char *, char const *);
 int         strcoll(const char *s1, const char *s2) __PURE;
 size_t      strxfrm(char *dest, const char *src, size_t n) __PURE;
 char       *strdup(const char *str) __MALLOC;
+char        tolower(char c);
+char        toupper(char c);
+char*       strrev(char* str);
+char*       itoa(int n, char* s, int b);
 
 #ifdef __cplusplus
 } /* extern "C" */

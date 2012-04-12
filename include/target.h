@@ -33,7 +33,4 @@ void ptable_re_init(void);
 /* get memory address for fastboot image loading */
 void *target_get_scratch_address(void);
 
-/* if target is using eMMC bootup */
-int target_is_emmc_boot(void);
-
 #endif

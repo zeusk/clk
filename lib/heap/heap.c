@@ -389,35 +389,3 @@ void heap_init(void)
 //	dprintf(INFO, "running heap tests\n");
 //	heap_test();
 }
-
-#if DEBUGLEVEL > 1
-#if WITH_LIB_CONSOLE
-
-#include <lib/console.h>
-
-static int cmd_heap(int argc, const cmd_args *argv);
-
-STATIC_COMMAND_START
-	STATIC_COMMAND("heap", "heap debug commands", &cmd_heap)
-STATIC_COMMAND_END(heap);
-
-static int cmd_heap(int argc, const cmd_args *argv)
-{
-	if (argc < 2) {
-		printf("not enough arguments\n");
-		return -1;
-	}
-
-	if (strcmp(argv[1].str, "info") == 0) {
-		heap_dump();
-	} else {
-		printf("unrecognized command\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-#endif
-#endif
-

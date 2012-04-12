@@ -29,7 +29,11 @@ C_STRING_OPS := \
 	strstr \
 	strtok \
 	strtoul \
-	strxfrm
+	strxfrm \
+	tolower \
+	toupper \
+	itoa \
+	strrev
 
 LIBC_STRING_C_DIR := $(LOCAL_DIR)
 

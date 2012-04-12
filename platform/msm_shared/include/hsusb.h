@@ -182,6 +182,11 @@ enum charger_type {
    CHG_UNDEFINED,
 };
 
+unsigned WALL_CHARGER;
+unsigned HOST_CHARGER;
+unsigned charger_connected;
+int is_usb_cable_connected(void);
+int usb_chg_detect_type(void);
 int usb_cable_status(void);
-
+void usb_charger_change_state(void);
 #endif

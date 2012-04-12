@@ -49,10 +49,7 @@ int charger_usb_i(unsigned current);
 int charger_usb_is_pc_connected(void);
 int charger_usb_is_charger_connected(void);
 
-static unsigned WALL_CHARGER = FALSE;
-static unsigned HOST_CHARGER = FALSE;
 static unsigned ENABLE_CHARGING = TRUE;
-static unsigned charger_connected = FALSE;
 
 /* common code - factor out into a shared file */
 
@@ -319,8 +316,8 @@ static void handle_ept_complete(struct udc_endpoint *ept)
 		if(item->info & 0xff) {
 			actual = 0;
 			status = -1;
-			dprintf(INFO, "EP%d/%s FAIL nfo=%x pg0=%x\n",
-				ept->num, ept->in ? "in" : "out", item->info, item->page0);
+			//dprintf(INFO, "EP%d/%s FAIL nfo=%x pg0=%x\n",
+			//	ept->num, ept->in ? "in" : "out", item->info, item->page0);
 		} else {
 			actual = req->req.length - ((item->info >> 16) & 0x7fff);
 			status = 0;
@@ -383,7 +380,7 @@ static unsigned char usb_config_value = 0;
 static void handle_setup(struct udc_endpoint *ept)
 {
 	struct setup_packet s;
-    
+
 	memcpy(&s, ept->head->setup_data, sizeof(s));
 	writel(ept->bit, USB_ENDPTSETUPSTAT);
 
@@ -392,94 +389,98 @@ static void handle_setup(struct udc_endpoint *ept)
             s.type, s.request, s.value, s.index, s.length,
             reqname(s.request));
 #endif
-	switch (SETUP(s.type,s.request)) {
-	case SETUP(DEVICE_READ, GET_STATUS): {
-		unsigned zero = 0;
-		if (s.length == 2) {
-			setup_tx(&zero, 2);
-			return;
-		}
-		break;
-	}
-	case SETUP(DEVICE_READ, GET_DESCRIPTOR): {
-		struct udc_descriptor *desc;
-		/* usb_highspeed? */
-		for (desc = desc_list; desc; desc = desc->next) {
-			if (desc->tag == s.value) {
-				unsigned len = desc->len;
-				if (len > s.length) len = s.length;
-				setup_tx(desc->data, len);
+	switch (SETUP(s.type,s.request))
+	{
+		case SETUP(DEVICE_READ, GET_STATUS):
+		{
+			unsigned zero = 0;
+			if (s.length == 2) {
+				setup_tx(&zero, 2);
 				return;
 			}
-		}
-		break;
-	}
-	case SETUP(DEVICE_READ, GET_CONFIGURATION):
-		/* disabling this causes data transaction failures on OSX. Why? */
-		if ((s.value == 0) && (s.index == 0) && (s.length == 1)) {
-			setup_tx(&usb_config_value, 1);
-			return;
-		}
-		break;
-	case SETUP(DEVICE_WRITE, SET_CONFIGURATION):
-		if (s.value == 1) {
-			struct udc_endpoint *ept;
-			/* enable endpoints */
-			for (ept = ept_list; ept; ept = ept->next){
-				if (ept->num == 0) 
-					continue;
-				endpoint_enable(ept, s.value);
-			}
-			usb_config_value = 1;
-#ifdef ENABLE_BATTERY_CHARGING
-			if(HOST_CHARGER == TRUE) {
-			  charger_usb_i(500);
-			}
-#endif
-			the_gadget->notify(the_gadget, UDC_EVENT_ONLINE);
-		} else {
-			writel(0, USB_ENDPTCTRL(1));
-			usb_config_value = 0;
-			the_gadget->notify(the_gadget, UDC_EVENT_OFFLINE);
-		}
-		setup_ack();
-		usb_online = s.value ? 1 : 0;
-		usb_status(s.value ? 1 : 0, usb_highspeed);
-		return;
-	case SETUP(DEVICE_WRITE, SET_ADDRESS):
-		/* write address delayed (will take effect
-		** after the next IN txn)
-		*/
-		writel((s.value << 25) | (1 << 24), USB_DEVICEADDR);
-		setup_ack();
-		return;
-	case SETUP(INTERFACE_WRITE, SET_INTERFACE):
-		/* if we ack this everything hangs */
-		/* per spec, STALL is valid if there is not alt func */
-		goto stall;
-	case SETUP(ENDPOINT_WRITE, CLEAR_FEATURE): {
-		struct udc_endpoint *ept;
-		unsigned num = s.index & 15;
-		unsigned in = !!(s.index & 0x80);
-        
-		if ((s.value == 0) && (s.length == 0)) {
-			DBG("clr feat %d %d\n", num, in);
-			for (ept = ept_list; ept; ept = ept->next) {
-				if ((ept->num == num) && (ept->in == in)) {
-					endpoint_enable(ept, 1);
-					setup_ack();
+		}break;
+		case SETUP(DEVICE_READ, GET_DESCRIPTOR):
+		{
+			struct udc_descriptor *desc;
+			/* usb_highspeed? */
+			for (desc = desc_list; desc; desc = desc->next)
+			{
+				if (desc->tag == s.value) {
+					unsigned len = desc->len;
+					if(len > s.length){len = s.length;}
+					setup_tx(desc->data, len);
 					return;
 				}
 			}
-		}
-		break;
+		}break;
+		case SETUP(DEVICE_READ, GET_CONFIGURATION):
+		{	/* disabling this causes data transaction failures on OSX. Why? */
+			if ((s.value == 0) && (s.index == 0) && (s.length == 1)) {
+				setup_tx(&usb_config_value, 1);
+				return;
+			}
+		}break;
+		case SETUP(DEVICE_WRITE, SET_CONFIGURATION):
+		{
+			if(s.value == 1){
+				struct udc_endpoint *ept;
+				/* enable endpoints */
+				for (ept = ept_list; ept; ept = ept->next)
+				{
+					if(ept->num == 0){continue;}
+					endpoint_enable(ept, s.value);
+				}
+				usb_config_value = 1;
+#ifdef ENABLE_BATTERY_CHARGING
+				if(HOST_CHARGER == TRUE) {
+			  		charger_usb_i(500);
+				}
+#endif
+				the_gadget->notify(the_gadget, UDC_EVENT_ONLINE);
+			}else{
+				writel(0, USB_ENDPTCTRL(1));
+				usb_config_value = 0;
+				the_gadget->notify(the_gadget, UDC_EVENT_OFFLINE);
+			}
+			setup_ack();
+			usb_online = s.value ? 1 : 0;
+			usb_status(s.value ? 1 : 0, usb_highspeed);
+			return;
+		}break;
+		case SETUP(DEVICE_WRITE, SET_ADDRESS):
+		{	/* write address delayed (will take effect
+			** after the next IN txn)
+			*/
+			writel((s.value << 25) | (1 << 24), USB_DEVICEADDR);
+			setup_ack();
+			return;
+		}break;
+		case SETUP(INTERFACE_WRITE, SET_INTERFACE):
+		{	/* if we ack this everything hangs */
+			/* per spec, STALL is valid if there is not alt func */
+			goto stall;
+		}break;
+		case SETUP(ENDPOINT_WRITE, CLEAR_FEATURE):
+		{
+			struct udc_endpoint *ept;
+			unsigned num = s.index & 15;
+			unsigned in = !!(s.index & 0x80);
+        		if ((s.value == 0) && (s.length == 0)) {
+				DBG("clr feat %d %d\n", num, in);
+				for (ept = ept_list; ept; ept = ept->next)
+				{
+					if ((ept->num == num) && (ept->in == in)) {
+						endpoint_enable(ept, 1);
+						setup_ack();
+						return;
+					}
+				}
+			}
+		}break;
 	}
-	}
-/* koko : Just hide this info
-	dprintf(INFO, " \n\n\n\n\n\n\n\n\n\n   STALL %s %d %d %d %d %d\n",
-		reqname(s.request),
-		s.type, s.request, s.value, s.index, s.length);
-*/
+//	dprintf(INFO, " \n\n\n\n\n\n\n\n\n\n   STALL %s %d %d %d %d %d\n",
+//		reqname(s.request), s.type, s.request, s.value, s.index, s.length);
+
 stall:
 	writel((1<<16) | (1 << 0), USB_ENDPTCTRL(ept->num));    
 }
@@ -527,9 +528,6 @@ static int msm_otg_xceiv_reset()
 	return 0;
 }
 
-void board_usb_init(void);
-void board_ulpi_init(void);
-
 int udc_init(struct udc_device *dev) 
 {
 	hsusb_clock_init();
@@ -540,7 +538,6 @@ int udc_init(struct udc_device *dev)
 	memset(epts, 0, 32 * sizeof(struct ept_queue_head));
 
 	//dprintf(INFO, "USB ID %08x\n", readl(USB_ID));
-//    board_usb_init();
 
         /* select ULPI phy */
 #ifdef PLATFORM_MSM8X60
@@ -552,8 +549,6 @@ int udc_init(struct udc_device *dev)
 	writel(0x00080002, USB_USBCMD);
 
 	thread_sleep(20);
-
-//    board_ulpi_init();
 
 //	arch_clean_invalidate_cache_range(epts, 32 * sizeof(struct ept_queue_head));
 	writel((unsigned) epts, USB_ENDPOINTLISTADDR);
@@ -822,6 +817,8 @@ void usb_charger_reset(void)
 int usb_chg_detect_type(void)
 {
     int ret = CHG_UNDEFINED;
+    WALL_CHARGER = FALSE;
+    HOST_CHARGER = FALSE;
 
     if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS)
     {
@@ -876,13 +873,16 @@ int usb_cable_status(void)
     if (!((1<<7) & readl(USB_PORTSC))) {
         ret=1;
     }
-    udc_stop();
+    //udc_stop();
     return ret;
 }
 
 void usb_charger_change_state(void)
 {
     int usb_connected;
+    WALL_CHARGER = FALSE;
+    HOST_CHARGER = FALSE;
+    charger_connected = FALSE;
 
    //User might have switched from host pc to wall charger. So keep checking
    //every time we are in the loop
@@ -890,7 +890,6 @@ void usb_charger_change_state(void)
    if(ENABLE_CHARGING == TRUE)
    {
       usb_connected = is_usb_cable_connected();
-
       if(usb_connected && !charger_connected)
       {
 	//mdelay(20);
@@ -929,7 +928,7 @@ void usb_charger_change_state(void)
          charger_connected = FALSE;
       }
       if(WALL_CHARGER == TRUE || HOST_CHARGER == TRUE){
-	//battery_charging_image();
+            //
       }
    }
    else if ((readl(USB_USBCMD) & 0x01) == 0){

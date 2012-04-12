@@ -227,6 +227,7 @@ int sdrecovery_init (void)
 	return 0;
 } 
 extern unsigned boot_into_sboot;
+extern unsigned boot_into_tboot;
 int recovery_init (void)
 {
 	struct recovery_message msg;
@@ -248,6 +249,13 @@ int recovery_init (void)
 		strcpy(msg.status, "OKAY");
 		set_recovery_message(&msg);	// send recovery message
 		boot_into_sboot = 1;	// Boot in sboot
+		return 0;
+	} else if (!strcmp("boot-tboot",msg.command)) {
+		valid_command = 1;
+		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
+		strcpy(msg.status, "OKAY");
+		set_recovery_message(&msg);	// send recovery message
+		boot_into_tboot = 1;	// Boot in sboot
 		return 0;
 	} else if (!strcmp("boot-recovery",msg.command)) {
 		valid_command = 1;

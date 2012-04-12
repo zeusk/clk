@@ -72,7 +72,7 @@ void fbcon_setfg(unsigned fg);
 void fbcon_setbg(unsigned bg);
 void fbcon_settg(unsigned tg);
 void fbcon_disp_logo(void);
-void fbcon_clear_region(int start_y, int end_y);
+void fbcon_clear_region(int start_y, int end_y, unsigned bg);
 void fbcon_set_y_cord(int offset);
 void fbcon_set_x_cord(int offset);
 void fbcon_inits(char *amss_ver, char *Menuid);

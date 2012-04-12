@@ -59,17 +59,12 @@ void fill_screen(uint16_t COLOR)
 	memset(config->base, COLOR, (((config->width) * (config->height)) * (config->bpp /8)));
 	return;
 }
-void fbcon_clear_region(int start_y, int end_y){
+void fbcon_clear_region(int start_y, int end_y, unsigned bg){
 
-	unsigned mybg = 0x0000;
-	if(inverted)
-	{
-		mybg = 0xffff;
-	}
 	unsigned area_size = (((end_y - start_y) * FONT_HEIGHT) * config->width) * ((config->bpp) / 8);
 	unsigned start_offset = ((start_y * FONT_HEIGHT) * config->width) * ((config->bpp) / 8);
 
-	memset(config->base + start_offset, mybg, area_size);
+	memset(config->base + start_offset, bg, area_size);
 }
 
 int fbcon_get_y_cord(void){

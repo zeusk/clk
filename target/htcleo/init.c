@@ -291,11 +291,6 @@ unsigned target_pause_for_battery_charge(void)
     return 0;
 }
 
-int target_is_emmc_boot(void)
-{
-	return 0;
-}
-
 void htcleo_ptable_dump(struct ptable *ptable)
 {
 	ptable_dump(ptable);

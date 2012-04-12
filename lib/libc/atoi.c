@@ -102,4 +102,3 @@ unsigned long atoul(const char *num)
 
 	return value;
 }
-

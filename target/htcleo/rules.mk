@@ -16,16 +16,8 @@ KERNEL_ADDR      := "(BASE_ADDR+0x00008000)"
 RAMDISK_ADDR     := "(BASE_ADDR+0x00a00000)"
 SCRATCH_ADDR     := "(BASE_ADDR+0x01400000)"
 
-#BASE_ADDR + 0x04000000
-#MEMBASE := 0x15800000
-#SCRATCH_ADDR     := 0x16800000
-#SCRATCH_ADDR     := "(MEMBASE+0x02000000)"
-#MEMBASE := SCRATCH_ADDR+0x19000000
-
 KEYS_USE_GPIO_KEYPAD := 1
 
-#DEFINES += ENABLE_BATTERY_CHARGING=1
-#DEFINES += DISPLAY_SPLASH_SCREEN=1
 DEFINES += DISPLAY_TYPE_LCDC=1
 
 CFLAGS += -mlittle-endian -mfpu=neon
@@ -33,8 +25,15 @@ LDFLAGS += -EL
 
 MODULES += \
 	dev/keys \
+	lib/debug \
 	lib/ptable \
 	lib/devinfo
+
+ifeq ($(WITH_SDC_DRIVER),1)
+MODULES += \
+	lib/fs \
+	dev/sd
+endif
 
 DEFINES += \
 	MEMBASE=$(MEMBASE)\
@@ -49,9 +48,7 @@ OBJS += \
 	$(LOCAL_DIR)/init.o \
 	$(LOCAL_DIR)/nand.o \
 	$(LOCAL_DIR)/keypad.o \
-	$(LOCAL_DIR)/atags.o 
-
-OBJS += \
+	$(LOCAL_DIR)/atags.o \
 	$(LOCAL_DIR)/htcleo_boot.o \
 	$(LOCAL_DIR)/htcleo_boot_s.o \
 	$(LOCAL_DIR)/platform.o 

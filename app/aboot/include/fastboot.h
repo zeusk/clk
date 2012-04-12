@@ -31,6 +31,7 @@
 
 int fastboot_init(void *xfer_buffer, unsigned max);
 unsigned int fastboot_cstat(void);
+int fastboot_write(void *buf, unsigned len);
 /* register a command handler 
  * - command handlers will be called if their prefix matches
  * - they are expected to call fastboot_okay() or fastboot_fail()

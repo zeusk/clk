@@ -24,7 +24,7 @@
 #define DSB .byte 0x4f, 0xf0, 0x7f, 0xf5
 #define ISB .byte 0x6f, 0xf0, 0x7f, 0xf5
 
-.text
+.section ".text.boot"
 .globl _start
 _start:
 	b	reset
@@ -36,12 +36,9 @@ _start:
 	b	arm_irq
 	b	arm_fiq
 
-#ifdef WSPL_VADDR
-//if LK is loaded by wince spl add romhdr
 .org 0x40
 	.word 0x43454345
 	.word (romhdr-_start)+WSPL_VADDR		// virtual address of romhdr
-	//.word romhdr+0x96C00000		// virtual address of romhdr
 	.word romhdr-_start				// file address of romhdr
 
 .org 0x00000900
@@ -69,30 +66,15 @@ romhdr:
 	.word 0						// ulTrackingStart
 	.word 0						// ulTrackingLen
 .org 0x00001000
-#endif
-
 
 reset:
 	/* do some cpu setup */
 #if ARM_WITH_CP15
 	mrc		p15, 0, r0, c1, c0, 0
-		/* XXX this is currently for arm926, revist with armv6 cores */
-		/* new thumb behavior, low exception vectors, i/d cache disable, mmu disabled */
 	bic		r0, r0, #(1<<15| 1<<13 | 1<<12)
 	bic		r0, r0, #(1<<2 | 1<<0)
-		/* enable alignment faults */
 	orr		r0, r0, #(1<<1)
 	mcr		p15, 0, r0, c1, c0, 0
-#endif
-
-#if WITH_CPU_EARLY_INIT
-	/* call platform/arch/etc specific init code */
-	bl __cpu_early_init
-
-	/* declare return address as global to avoid using stack */
-.globl _cpu_early_init_complete
-	_cpu_early_init_complete:
-
 #endif
 
 #if (!ENABLE_NANDWRITE)
