@@ -53,6 +53,7 @@ static unsigned char buf[4096]; //Equal to max-supported pagesize
 #define OFF	 	0
 unsigned run_usb_listener = 1;
 void set_usb_status_listener(int state);
+bool run_usbcheck = 0;
 
 struct atag_ptbl_entry
 {

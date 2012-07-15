@@ -39,9 +39,6 @@ void ptable_init(struct ptable *ptable)
 	memset(ptable, 0, sizeof(struct ptable));
 }
 
-char* ptype[] = {"Apps", "Modem"};
-char* pperm[] = {"No", "Yes"};
-
 void ptable_add(struct ptable *ptable, char *name, unsigned start,
 		unsigned length, unsigned flags, char type, char perm)
 {
@@ -63,14 +60,15 @@ void ptable_dump(struct ptable *ptable)
 	struct ptentry *ptn;
 	int i;
 
-	for (i = 0; i < ptable->count; ++i) {
+	for (i = 0; i < ptable->count; ++i)
+	{
 		ptn = &ptable->parts[i];
-		//Fix it lateron. Ptable dumping not so important for now -.-
-		/*dprintf(INFO, "ptn %d name='%s' start=%08x len=%08x "
-			"flags=%08x type=%s Writable=%s\n", i, ptn->name, ptn->start, ptn->length,
-			ptn->flags, ptype[ptn->type], pperm[ptn->perm]);*/
-		
-		}
+		printf("ptn %d name=%s start=%08x len=%08x \
+			flags=%08x type=%s writable=%s\n",
+			i, ptn->name, ptn->start, ptn->length,
+			ptn->flags, (ptn->type == 0 ? "Apps" : "Modem"), (ptn->perm == 0 ? "No" : "Yes")
+			);
+	}
 }
 
 struct ptentry *ptable_find(struct ptable *ptable, const char *name)

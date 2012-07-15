@@ -13,7 +13,7 @@ struct pos {
 };
 
 /* fbconfig, retrieved using fbcon_display() in device instants */
-static struct fbcon_config *config = NULL;
+struct fbcon_config *config = NULL;
 #define RGB565_RED		0xf800
 #define RGB565_GREEN		0x07e0
 #define RGB565_BLUE		0x001f

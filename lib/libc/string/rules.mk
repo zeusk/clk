@@ -20,6 +20,7 @@ C_STRING_OPS := \
 	strlen \
 	strncat \
 	strncpy \
+	strndup \
 	strncmp \
 	strnicmp \
 	strnlen \

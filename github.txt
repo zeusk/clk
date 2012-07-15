@@ -1,6 +1,10 @@
 git add . -A
 
-git commit -m "Added option to give size of partition(s) in blocks through fastboot.
-Added same option in nbgen.c."
+git commit -m "Added BT Mac Addr - WiFi Mac Addr - CID to Device Info.
+Added option to dis/en-able USB detection.
+Added minimal check (just for Magic header) before booting any kernel.
+Revised Help output.
+Added strndup.c.
+Reworked ptable_dump()."
 
 git push origin BlackCLK
