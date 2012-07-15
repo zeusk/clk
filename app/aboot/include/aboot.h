@@ -14,7 +14,8 @@
 #define ERR_KEY_CHANGED 99
 #define MAX_MENU 	16
 
-#define ROUND_TO_PAGE(x,y) (((x) + (y)) & (~(y)))
+#define ROUND_TO_PAGE(x,y)	(((x) + (y)) & (~(y)))
+#define round(x)		((long)((x)+0.5))
 
 unsigned page_size = 0;
 unsigned page_mask = 0;

@@ -28,6 +28,7 @@ extern unsigned boot_into_recovery;
 extern unsigned blocks_per_mb;
 extern unsigned flash_start_blk;
 extern unsigned flash_size_blk;
+unsigned lk_start_blk;
 
 void keypad_init(void);
 void display_init(void);
@@ -39,7 +40,6 @@ void cmd_oem_register();
 void shutdown_device(void);
 void dispmid(const char *fmt, int sel);
 void flash_set_vptable(struct ptable * new_ptable);
-
 void reboot_device(unsigned reboot_reason);
 unsigned get_boot_reason(void);
 unsigned boot_reason = 0xFFFFFFFF;
@@ -72,6 +72,9 @@ int find_start_block()
 		dprintf( CRITICAL, "ERROR: ROMHDR partition not found!!!" );
 		return -1;
 	}
+
+	// Set lk start block
+	lk_start_blk = ptn->start;
 
 	// Read ROM header
 	if ( flash_read( ptn, 0, buf, page_size ) )
@@ -152,8 +155,8 @@ void target_init(void)
 
 	ptable_init( &flash_devinfo );
 
-	// ROM header partition (read only)
-	ptable_add( &flash_devinfo, PTN_ROMHDR, HTCLEO_ROM_OFFSET, 0x2, 0, TYPE_APPS_PARTITION, PERM_NON_WRITEABLE );
+	// ROM header partition
+	ptable_add( &flash_devinfo, PTN_ROMHDR, HTCLEO_ROM_OFFSET, 0x2, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 
 	// Find free ROM start block
 	if ( find_start_block() == -1 )
@@ -189,8 +192,11 @@ void target_init(void)
 
 	ptable_init( &flash_ptable );
 
-	// Parse partitions
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	// Add LK as 1st partition
+	ptable_add( &flash_ptable, device_info.partition[0].name, lk_start_blk, device_info.partition[0].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+
+	// Parse the rest partitions
+	for ( unsigned i = 1; i < MAX_NUM_PART; i++ )
 	{
 		// Valid partition?
 		if ( strlen( device_info.partition[i].name ) == 0 )
@@ -214,17 +220,18 @@ void ptable_re_init(void)
 	ptable_init( &flash_ptable );
 	ptable_init( &flash_newptable );
 
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	ptable_add( &flash_newptable, device_info.partition[0].name, lk_start_blk, device_info.partition[0].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
+
+	for ( unsigned i = 1; i < MAX_NUM_PART; i++ )
 	{
 		if ( strlen( device_info.partition[i].name ) == 0 )
 			break;
+	
 		ptable_add( &flash_newptable, device_info.partition[i].name, start_blk, device_info.partition[i].size, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 		start_blk += device_info.partition[i].size;
 	}
 	flash_ptable = flash_newptable;
 }
-
-struct fbcon_config* fbcon_display(void);
 
 int htcleo_fastboot_init()
 {

@@ -5,6 +5,7 @@
 
 void platform_init_interrupts(void);
 void platform_init_timer();
+
 void platform_early_init(void)
 {
 	platform_init_interrupts();
@@ -21,8 +22,9 @@ void platform_init(void)
 #endif
 #define LCDC_FB_BPP 16
 #define MSM_MDP_BASE1 0xAA200000
+#define LCDC_BASE     0xE0000
 
-static struct fbcon_config fb_cfg = {
+struct fbcon_config fb_cfg = {
 	.height		= LCDC_FB_HEIGHT,
 	.width		= LCDC_FB_WIDTH,
 	.stride		= LCDC_FB_WIDTH,
@@ -31,8 +33,10 @@ static struct fbcon_config fb_cfg = {
 	.update_start	= NULL,
 	.update_done	= NULL,
 };
+
 void display_init(void)
 {
+	writel(1, MSM_MDP_BASE1 + LCDC_BASE + 0x0);
 	fb_cfg.base = (unsigned*)readl( MSM_MDP_BASE1 + 0x90008);
 	fbcon_setup(&fb_cfg);
 	fbcon_clear();

@@ -191,7 +191,7 @@ void update_device_imei(void)
 	dump_mem_to_buf((char*)str2u("0x1EF260"), str2u("0xF"), imeiBuffer);
 
 	hex2ascii(imeiBuffer, device_imei);
-
+	
 	return;
 }
 
@@ -279,10 +279,10 @@ void update_device_wifimac(void)
  * koko : Changed the header to display
  *		
  *	eg: 	cLK 1.7.0.0   |   SPL 2.08.HSPL   |   RADIO 2.15.50.14
- *					 NAND flash chipset : Hynix-BC
- *					    Total flash size:    512MB
- *					      Available size:    421MB
- *						      ExtROM: DISABLED
+ *		Black Edition
+ *					NAND flash chipset :  Hynix-BC
+ *			           Available/Total size(MB): 445 / 512
+ *				         	     ExtROM:  DISABLED
  */
 void draw_clk_header(void)
 {
@@ -296,15 +296,19 @@ void draw_clk_header(void)
 	fbcon_setfg(mycfg);
 	fbcon_settg(mytg);
 	printf("                                                            ");
-	printf("   LK %s", PSUEDO_VERSION);
+	printf("   cLK %s", PSUEDO_VERSION);
 	fbcon_setfg(myfg);
 	char expected_byte[] = "3";
 	printf("   |   SPL %s   |   RADIO %s   ",
 		 spl_version, radBuffer[0] != expected_byte[0] ? ".........." : radio_version);
-	printf("                           NAND flash chipset: %7s-%02X                                \
-		Total flash size:     %4iMB   ",flash_info->manufactory, flash_info->device, (int)( flash_info->num_blocks / get_blk_per_mb() ));
-	printf("                               \
-		Available size:      %iMB   ", (int)( get_usable_flash_size() / get_blk_per_mb() ));
+	fbcon_setfg(mycfg);printf("   Black Edition                                            ");fbcon_setfg(myfg);
+	printf("                           NAND flash chipset: %7s-%02X   ",
+		flash_info->manufactory, flash_info->device);
+	printf("                     Available/Total size(MB): %s%4i%s%4i   ",
+		((int)( flash_info->num_blocks / get_blk_per_mb() ) == 512 ? "" : " "),
+		(int)( get_usable_flash_size() / get_blk_per_mb() ),
+		((int)( flash_info->num_blocks / get_blk_per_mb() ) == 512 ? " /" : "/"),
+		(int)( flash_info->num_blocks / get_blk_per_mb() ));
 	printf("                                       \
 		ExtROM:   ");
 	if (device_info.extrom_enabled){
@@ -537,12 +541,12 @@ void eval_command(void)
 		if(img_hdr_is_valid(ptable_find(flash_get_ptable(), "boot")))
 		{
 			active_menu=NULL;
-	        	fbcon_resetdisp();
-			if(inverted){draw_clk_header();printf(" \n\n");}
-	        	boot_into_sboot = 0;
+	        fbcon_resetdisp();
+			if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	        boot_into_sboot = 0;
 			boot_into_tboot = 0;
-	        	boot_into_recovery = 0;
-	        	boot_linux_from_flash();
+	        boot_into_recovery = 0;
+	        boot_linux_from_flash();
 		}else{
 			redraw_menu();
 			printf("   Not accessible. Flash a proper image and try again.\n   (fastboot flash boot boot.img)\n");
@@ -555,12 +559,12 @@ void eval_command(void)
 		if(img_hdr_is_valid(ptable_find(flash_get_ptable(), "sboot")))
 		{
 			active_menu=NULL;
-	        	fbcon_resetdisp();
-			if(inverted){draw_clk_header();printf(" \n\n");}
-	        	boot_into_sboot = 1;
-	        	boot_into_tboot = 0;
-	        	boot_into_recovery = 0;
-	        	boot_linux_from_flash();
+	        fbcon_resetdisp();
+			if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	        boot_into_sboot = 1;
+	        boot_into_tboot = 0;
+	        boot_into_recovery = 0;
+	        boot_linux_from_flash();
 		}else{
 			redraw_menu();
 			printf("   Not accessible. Flash a proper image and try again.\n   (fastboot flash sboot sboot.img)\n");
@@ -573,12 +577,12 @@ void eval_command(void)
 		if(img_hdr_is_valid(ptable_find(flash_get_ptable(), "tboot")))
 		{
 			active_menu=NULL;
-	        	fbcon_resetdisp();
-			if(inverted){draw_clk_header();printf(" \n\n");}
-	        	boot_into_tboot = 1;
-	        	boot_into_sboot = 0;
-	        	boot_into_recovery = 0;
-	        	boot_linux_from_flash();
+	        fbcon_resetdisp();
+			if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	        boot_into_tboot = 1;
+	        boot_into_sboot = 0;
+	        boot_into_recovery = 0;
+	        boot_linux_from_flash();
 		}else{
 			redraw_menu();
 			printf("   Not accessible. Flash a proper image and try again.\n   (fastboot flash tboot tboot.img)\n");
@@ -591,12 +595,12 @@ void eval_command(void)
 		if(img_hdr_is_valid(ptable_find(flash_get_ptable(), "recovery")))
 		{
 			active_menu=NULL;
-	        	fbcon_resetdisp();
-			if(inverted){draw_clk_header();printf(" \n\n");}
-	        	boot_into_sboot = 0;
-	        	boot_into_tboot = 0;
-	        	boot_into_recovery = 1;
-	        	boot_linux_from_flash();
+	        fbcon_resetdisp();
+			if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	        boot_into_sboot = 0;
+	        boot_into_tboot = 0;
+	        boot_into_recovery = 1;
+	        boot_linux_from_flash();
 		}else{
 			redraw_menu();
 			printf("   Not accessible. Flash a proper image and try again.\n   (fastboot flash recovery recovery.img)\n");
@@ -697,43 +701,46 @@ void eval_command(void)
 			}
 			else
 			{
-				cust_menu.top_offset    = 0;
-				cust_menu.bottom_offset = 0;
-				cust_menu.selectedi     = 0;
-				cust_menu.maxarl	= 0;
-				cust_menu.goback	= 0;
-
-				strcpy( cust_menu.data, subCommand );
-				strcpy( cust_menu.backCommand, "goto_rept" );
-
-				if(!device_info.partition[device_partition_order(cust_menu.data)-1].asize) // if selected partition has a fixed size
+				if(strcmp(subCommand, "lk"))
 				{
-					sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
-					
-					/* koko : Added more options +25,+5,-5,-25 */
-					add_menu_item(&cust_menu, "   +25"			, "rept_add_25", 0);
-					add_menu_item(&cust_menu, "   +10"			, "rept_add_10", 1);
-					add_menu_item(&cust_menu, "   +5"			, "rept_add_5" , 2);
-					add_menu_item(&cust_menu, "   +1"			, "rept_add_1" , 3);
-					add_menu_item(&cust_menu, "   -1"			, "rept_rem_1" , 4);
-					add_menu_item(&cust_menu, "   -5"			, "rept_rem_5" , 5);
-					add_menu_item(&cust_menu, "   -10"			, "rept_rem_10", 6);
-					add_menu_item(&cust_menu, "   -25"			, "rept_rem_25", 7);
-
+					cust_menu.top_offset    = 0;
+					cust_menu.bottom_offset = 0;
+					cust_menu.selectedi     = 0;
+					cust_menu.maxarl	= 0;
+					cust_menu.goback	= 0;
+	
+					strcpy( cust_menu.data, subCommand );
+					strcpy( cust_menu.backCommand, "goto_rept" );
+	
+					if(!device_info.partition[device_partition_order(cust_menu.data)-1].asize) // if selected partition has a fixed size
+					{
+						sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, (int) round((float)(device_partition_size(cust_menu.data)) / (float)(get_blk_per_mb())) );
+						
+						/* koko : Added more options +25,+5,-5,-25 */
+						add_menu_item(&cust_menu, "   +25"			, "rept_add_25", 0);
+						add_menu_item(&cust_menu, "   +10"			, "rept_add_10", 1);
+						add_menu_item(&cust_menu, "   +5"			, "rept_add_5" , 2);
+						add_menu_item(&cust_menu, "   +1"			, "rept_add_1" , 3);
+						add_menu_item(&cust_menu, "   -1"			, "rept_rem_1" , 4);
+						add_menu_item(&cust_menu, "   -5"			, "rept_rem_5" , 5);
+						add_menu_item(&cust_menu, "   -10"			, "rept_rem_10", 6);
+						add_menu_item(&cust_menu, "   -25"			, "rept_rem_25", 7);
+	
+					}
+					else 	// if selected partition is auto-size
+					{	// give user the option to make it fixed-size
+						sprintf( cust_menu.MenuId, "%s partition is auto-size (%d MB)", cust_menu.data , (int) (device_partition_size(cust_menu.data) / get_blk_per_mb()) );
+						char cancelautosize[32];
+						char cancelautosizecmd[32];
+						sprintf( cancelautosize, "   Convert partition to fixed-size (%d MB)", (int) (device_partition_size(cust_menu.data) / get_blk_per_mb()) );
+						sprintf( cancelautosizecmd, "rept_set_%d", (int) (device_partition_size(cust_menu.data) / get_blk_per_mb()) );
+						add_menu_item(&cust_menu, cancelautosize		, cancelautosizecmd, 0);
+					}
+	
+					active_menu = &cust_menu;
+					redraw_menu();
+					selector_enable();
 				}
-				else 	// if selected partition is auto-size
-				{	// give user the option to make it fixed-size
-					sprintf( cust_menu.MenuId, "%s partition is auto-size (%d MB)", cust_menu.data , (int)( device_partition_size( cust_menu.data ) / get_blk_per_mb() ));
-					char cancelautosize[32];
-					char cancelautosizecmd[32];
-					sprintf( cancelautosize, "   Convert partition to fixed-size (%d MB)", (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
-					sprintf( cancelautosizecmd, "rept_set_%d", (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
-					add_menu_item(&cust_menu, cancelautosize		, cancelautosizecmd, 0);
-				}
-
-				active_menu = &cust_menu;
-				redraw_menu();
-				selector_enable();
 			}
 		}
 		else if ( active_menu == &cust_menu )
@@ -775,7 +782,7 @@ void eval_command(void)
 					{
 						device_info.partition[device_partition_order(cust_menu.data)-1].asize = 1;
 						device_resize_ex( cust_menu.data, size, false );
-						sprintf( cust_menu.MenuId, "%s partition is auto-size (%d MB)", cust_menu.data , (int)( device_partition_size( cust_menu.data ) / get_blk_per_mb() ));
+						sprintf( cust_menu.MenuId, "%s partition is auto-size (%d MB)", cust_menu.data , (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ));
 						thread_sleep(500);
 						active_menu = &rept_menu;
 					}
@@ -879,15 +886,18 @@ void eval_command(void)
 					   |____________________________________________________|\n\
 					   | MTDBLOCK# |   NAME   | AUTO-SIZE |  BLOCKS  |  MB  |\n");
 				printf("   |===========|==========|===========|==========|======|\n");
-				int ordercount=0;
+				int ordercount=1;
 				for ( unsigned i = 1; i < MAX_NUM_PART+1; i++ )
 				{
 					for ( unsigned j = 0; j < MAX_NUM_PART; j++ )
 					{
 						if( ((int)i==mirror_info.partition[j].order) && (strlen( mirror_info.partition[j].name ) != 0) )
 						{
-							printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", ordercount++, mirror_info.partition[j].name,
-								mirror_info.partition[j].asize, mirror_info.partition[j].size, mirror_info.partition[j].size / get_blk_per_mb() );
+							if ( memcmp( mirror_info.partition[j].name, "lk", strlen( "lk" ) ) )
+							{
+								printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", ordercount++, mirror_info.partition[j].name,
+									mirror_info.partition[j].asize, mirror_info.partition[j].size, round((float)(mirror_info.partition[j].size) / (float)(get_blk_per_mb())) );
+							}
 						}
 					}
 				}
@@ -896,7 +906,7 @@ void eval_command(void)
 			}
 			else
 			{
-				if(strcmp(subCommand, "recovery")) // Don't move recovery partition cause then we'll need pc to re-flash it
+				if(strcmp(subCommand, "recovery") && strcmp(subCommand, "lk")) // Don't move lk or recovery partition
 				{
 					strcpy( cust_menu.data, subCommand );
 					sprintf( cust_menu.MenuId, "%s as partition #%d", cust_menu.data, (int) ( mirror_partition_order( cust_menu.data ) ) );
@@ -907,15 +917,15 @@ void eval_command(void)
 					*/
 					int orderstart=0; 
 					int menuselectfix=1; // fix menu selection if recovery is not the 1st partition
-					if( (!strcmp(cust_menu.data, "misc")) || (!strcmp(cust_menu.data, "boot")) || (!strcmp(cust_menu.data, "userdata")) || (!strcmp(cust_menu.data, "system")) || (!strcmp(cust_menu.data, "cache")) )
+					if( (!strcmp(cust_menu.data, "misc")) || (!strcmp(cust_menu.data, "boot")) || (!strcmp(cust_menu.data, "userdata")) || (!strcmp(cust_menu.data, "system")) || (!strcmp(cust_menu.data, "cache")) || (!strcmp(cust_menu.data, "null")) || (!strcmp(cust_menu.data, "null1")) || (!strcmp(cust_menu.data, "null2")) )
 					{
-						if(device_partition_order( "recovery" )==1)
+						if(device_partition_order( "recovery" )==2)
 						{
-							orderstart=2;menuselectfix=0;
+							orderstart=3;menuselectfix=0;
 						}
 						else
 						{
-							orderstart=1;
+							orderstart=2;
 						}
 					}
 					if( (device_partition_order(cust_menu.data))<(device_partition_order("recovery")) )
@@ -934,7 +944,7 @@ void eval_command(void)
 					int j=0;
 					for ( int i = orderstart; i < (active_menu->maxarl - 1); i++ )
 					{
-						if(i!=device_partition_order( "recovery" )) // The order of recovery partition can not be available, because we don't move recovery partition
+						if(i!=device_partition_order( "recovery" ) && i!=device_partition_order( "lk" )) // The order of lk and recovery partitions can not be available
 						{
 							sprintf( ordernumber, "   %d", i );
 							sprintf( ordercmd, "rear_set_%d", i );
@@ -1084,15 +1094,18 @@ void eval_command(void)
 			   |____________________________________________________|\n\
 			   | MTDBLOCK# |   NAME   | AUTO-SIZE |  BLOCKS  |  MB  |\n");
 		printf("   |===========|==========|===========|==========|======|\n");
-		int ordercount=0;
+		int ordercount=1;
 		for ( unsigned i = 1; i < MAX_NUM_PART+1; i++ )
 		{
 			for ( unsigned j = 0; j < MAX_NUM_PART; j++ )
 			{
 				if( ((int)i==mirror_info.partition[j].order) && (strlen( mirror_info.partition[j].name ) != 0) )
 				{
-					printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", ordercount++, mirror_info.partition[j].name,
-						mirror_info.partition[j].asize, mirror_info.partition[j].size, mirror_info.partition[j].size / get_blk_per_mb() );
+					if ( memcmp( mirror_info.partition[j].name, "lk", strlen( "lk" ) ) )
+					{
+						printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", ordercount++, mirror_info.partition[j].name,
+							mirror_info.partition[j].asize, mirror_info.partition[j].size, round((float)(mirror_info.partition[j].size) / (float)(get_blk_per_mb())) );
+					}
 				}
 			}
 		}
@@ -1144,7 +1157,7 @@ void eval_command(void)
 		time_t ct = current_time();
 		for ( int i = 0; i < ptable_size(ptable); i++ )
 		{
-			if(memcmp(ptable_get(ptable, i)->name,"recovery", strlen(ptable_get(ptable, i)->name)))
+			if( (memcmp(ptable_get(ptable, i)->name,"recovery", strlen(ptable_get(ptable, i)->name))) && (memcmp(ptable_get(ptable, i)->name,"lk", strlen(ptable_get(ptable, i)->name))) )
 			{
 				printf( "\n   Formatting %s...", ptable_get(ptable, i)->name );
 				flash_erase(ptable_get(ptable, i));
@@ -1744,7 +1757,9 @@ void eval_keydown(void)
 		case KEY_SEND: // dial
 			eval_command();
 			break;
-		case KEY_CLEAR: // hangup
+		case KEY_HOME:
+			break;
+		case KEY_CLEAR: //hangup
 			break;
 		case KEY_BACK:
 			active_menu->goback = 1;
@@ -1765,6 +1780,8 @@ void eval_keyup(void)
 		case KEY_VOLUMEDOWN:
 			break;
 		case KEY_SEND: // dial
+			break;
+		case KEY_HOME:
 			break;
 		case KEY_CLEAR: //hangup
 			break;
@@ -1844,16 +1861,16 @@ void init_menu()
 	strcpy( main_menu.backCommand, "" );
 
 	//PRIMARY BOOT
-      	add_menu_item(&main_menu, "   ANDROID @  BOOT"		, "boot_pboot", i++);
+    add_menu_item(&main_menu, "   ANDROID @  BOOT"		, "boot_pboot", i++);
 	if (device_partition_exist("sboot")){
       	//SECONDARY BOOT
       	add_menu_item(&main_menu, "   ANDROID @ sBOOT"		, "boot_sboot", i++);
-	j++;
+		j++;
 	}
 	if (device_partition_exist("tboot")){
 	//TERTIARY BOOT
       	add_menu_item(&main_menu, "   ANDROID @ tBOOT"		, "boot_tboot", i++);
-	j++;
+		j++;
 	}
 	add_menu_item(&main_menu, "   RECOVERY"			, "boot_recv", i++);
 	add_menu_item(&main_menu, "   FLASHLIGHT"		, "init_flsh", i++);
@@ -1865,79 +1882,79 @@ void init_menu()
 
 	main_menu.selectedi     = j; // FLASHLIGHT by default
 
-      	sett_menu.top_offset    = 0;
-        sett_menu.bottom_offset = 0;
-        sett_menu.maxarl	= 0;
-        sett_menu.goback	= 0;
+    sett_menu.top_offset    = 0;
+    sett_menu.bottom_offset = 0;
+    sett_menu.maxarl	= 0;
+    sett_menu.goback	= 0;
       
-      	strcpy( sett_menu.MenuId, "SETTINGS" );
-      	strcpy( sett_menu.backCommand, "goto_main" );
+    strcpy( sett_menu.MenuId, "SETTINGS" );
+    strcpy( sett_menu.backCommand, "goto_main" );
             
-        add_menu_item(&sett_menu, "   RESIZE PARTITIONS"	, "goto_rept",k++);
-        add_menu_item(&sett_menu, "   REARRANGE PARTITIONS"	, "goto_rear",k++);
-        add_menu_item(&sett_menu, "   PRINT PARTITION TABLE"	, "prnt_stat",k++);
-        add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE"	, "prnt_bblocks",k++);
-        add_menu_item(&sett_menu, "   FORMAT NAND"		, "format_nand",k++);
+    add_menu_item(&sett_menu, "   RESIZE PARTITIONS"	, "goto_rept",k++);
+    add_menu_item(&sett_menu, "   REARRANGE PARTITIONS"	, "goto_rear",k++);
+    add_menu_item(&sett_menu, "   PRINT PARTITION TABLE"	, "prnt_stat",k++);
+    add_menu_item(&sett_menu, "   PRINT BAD BLOCK TABLE"	, "prnt_bblocks",k++);
+    add_menu_item(&sett_menu, "   FORMAT NAND"		, "format_nand",k++);
 #if WITH_DEV_SD
-        add_menu_item(&sett_menu, "   UPDATE RECOVERY"       	, "flash_recovery",k++);
+    add_menu_item(&sett_menu, "   UPDATE RECOVERY"       	, "flash_recovery",k++);
 #endif
-        if (!device_partition_exist("tboot")){
-        	if (device_partition_exist("sboot")){
-            	add_menu_item(&sett_menu, "   REMOVE sBOOT"		, "disable_sboot",k++);
-            	}else{
-            	add_menu_item(&sett_menu, "   ADD sBOOT"		, "enable_sboot",k++);
-            	}
-      	}
-      	if (device_partition_exist("sboot")){
-            	if (device_partition_exist("tboot")){
-            	add_menu_item(&sett_menu, "   REMOVE tBOOT"	, "disable_tboot",k++);
-            	}else{
-            	add_menu_item(&sett_menu, "   ADD tBOOT"	, "enable_tboot",k++);
-            	}
-      	}
-        if (device_info.extrom_enabled){
-        add_menu_item(&sett_menu, "   DISABLE ExtROM"		, "disable_extrom",k++);
+    if (!device_partition_exist("tboot")){
+       	if (device_partition_exist("sboot")){
+           	add_menu_item(&sett_menu, "   REMOVE sBOOT"		, "disable_sboot",k++);
         }else{
-        add_menu_item(&sett_menu, "   ENABLE ExtROM"		, "enable_extrom",k++);
+           	add_menu_item(&sett_menu, "   ADD sBOOT"		, "enable_sboot",k++);
         }
-        add_menu_item(&sett_menu, "   INVERT SCREEN COLORS"	, "invert_colors",k++);
+    }
+    if (device_partition_exist("sboot")){
+        if (device_partition_exist("tboot")){
+            add_menu_item(&sett_menu, "   REMOVE tBOOT"	, "disable_tboot",k++);
+        }else{
+           	add_menu_item(&sett_menu, "   ADD tBOOT"	, "enable_tboot",k++);
+    	}
+    }
+    if (device_info.extrom_enabled){
+        add_menu_item(&sett_menu, "   DISABLE ExtROM"		, "disable_extrom",k++);
+    }else{
+        add_menu_item(&sett_menu, "   ENABLE ExtROM"		, "enable_extrom",k++);
+    }
+    add_menu_item(&sett_menu, "   INVERT SCREEN COLORS"	, "invert_colors",k++);
 
 	strcpy( rept_menu.MenuId, "RESIZE PARTITIONS" );
-      	strcpy( rept_menu.backCommand, "goto_sett" );
+    strcpy( rept_menu.backCommand, "goto_sett" );
 	
-      	strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
-      	strcpy( rear_menu.backCommand, "goto_sett" );
+    strcpy( rear_menu.MenuId, "REARRANGE PARTITIONS" );
+    strcpy( rear_menu.backCommand, "goto_sett" );
 	
 	about_menu.top_offset    = 0;
-      	about_menu.bottom_offset = 0;
-      	about_menu.selectedi     = 0;
-      	about_menu.maxarl	= 0;
-      	about_menu.goback	= 0;
+    about_menu.bottom_offset = 0;
+    about_menu.selectedi     = 0;
+    about_menu.maxarl	= 0;
+    about_menu.goback	= 0;
 	
 	strcpy( about_menu.MenuId, "INFO" );
 	strcpy( about_menu.backCommand, "goto_main" );
 		
-      	if (device_info.show_startup_info){
+    if (device_info.show_startup_info){
       	add_menu_item(&about_menu, "   HIDE STARTUP INFO"	, "disable_info", 0);
-      	}else{
+    }else{
       	add_menu_item(&about_menu, "   SHOW STARTUP INFO"	, "enable_info", 0);
-      	}
+    }
 	if (device_info.usb_detect){
       	add_menu_item(&about_menu, "   DISABLE USB DETECTION"	, "disable_usb_detect", 1);
-      	}else{
+    }else{
       	add_menu_item(&about_menu, "   ENABLE USB DETECTION"	, "enable_usb_detect", 1);
-      	}
+    }
 	add_menu_item(&about_menu, "   PRINT NAND INFO"		, "prnt_nand", 2);
-      	add_menu_item(&about_menu, "   CREDITS"			, "goto_credits", 3);
-      	add_menu_item(&about_menu, "   HELP"			, "goto_help", 4);
+    add_menu_item(&about_menu, "   CREDITS"			, "goto_credits", 3);
+    add_menu_item(&about_menu, "   HELP"			, "goto_help", 4);
 	      	
-      	strcpy( cred_menu.MenuId, "CREDITS" );
-      	strcpy( cred_menu.backCommand, "goto_about" );
+    strcpy( cred_menu.MenuId, "CREDITS" );
+    strcpy( cred_menu.backCommand, "goto_about" );
 	      
-      	strcpy( help_menu.MenuId, "HELP" );
-      	strcpy( help_menu.backCommand, "goto_about" );
+    strcpy( help_menu.MenuId, "HELP" );
+    strcpy( help_menu.backCommand, "goto_about" );
 
-      	active_menu = &main_menu;
+    active_menu = &main_menu;
 	redraw_menu();
 }
 
@@ -2082,13 +2099,13 @@ int boot_linux_from_flash(void)
 		boot_into_tboot = 0;
 		dprintf(ALWAYS,"\n\nBooting to recovery ...\n\n");
 		
-        	ptn = ptable_find(ptable, "recovery");
-        	if (ptn == NULL)
+        ptn = ptable_find(ptable, "recovery");
+        if (ptn == NULL)
 		{
-	        	dprintf(CRITICAL, "   ERROR: No recovery partition found\n");
+	        dprintf(CRITICAL, "   ERROR: No recovery partition found\n");
 			boot_into_recovery=0;
-	        	goto failed;
-        	}
+	        goto failed;
+        }
 	}
 	else if (boot_into_sboot)
 	{ 
@@ -2118,12 +2135,12 @@ int boot_linux_from_flash(void)
 	{ 
 		// Standard boot
 		printf("\n\nNormal boot ...\n\n");
-        	ptn = ptable_find(ptable, "boot");
-        	if (ptn == NULL)
+        ptn = ptable_find(ptable, "boot");
+        if (ptn == NULL)
 		{
-	        	dprintf(CRITICAL, "   ERROR: No boot partition found\n");
-	        	goto failed;
-        	}
+	        dprintf(CRITICAL, "   ERROR: No boot partition found\n");
+	        goto failed;
+        }
 	}
 
 	if (flash_read(ptn, offset, buf, page_size))
@@ -2305,9 +2322,16 @@ void cmd_flash(const char *arg, void *data, unsigned sz)
 
 void cmd_continue(const char *arg, void *data, unsigned sz)
 {
+	active_menu=NULL;
+	fbcon_resetdisp();
+	if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	
 	fastboot_okay("");
 	target_battery_charging_enable(0, 1);
 	udc_stop();
+	boot_into_sboot = 0;
+	boot_into_tboot = 0;
+	boot_into_recovery = 0;
 	boot_linux_from_flash();
 }
 
@@ -2329,15 +2353,18 @@ void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
 
 void cmd_oem_rec_boot(void)
 {
+	active_menu=NULL;
 	fbcon_resetdisp();
-
+    if(inverted){draw_clk_header();fbcon_settg(0xffff);fbcon_setfg(0x0000);printf(" \n\n");}
+	
 	fastboot_okay("");
 	target_battery_charging_enable(0, 1);
 	udc_stop();
-        boot_into_sboot = 0;
-        boot_into_tboot = 0;
-        boot_into_recovery = 1;
-        boot_linux_from_flash();
+    
+	boot_into_sboot = 0;
+    boot_into_tboot = 0;
+    boot_into_recovery = 1;
+    boot_linux_from_flash();
 }
 
 void cmd_powerdown(const char *arg, void *data, unsigned sz)
@@ -2596,7 +2623,7 @@ void prnt_nand_stat(void)
 	printf("   | PTABLE  (0x%x) size: %4i block(s)  = %5i MB    |\n",
 		get_flash_offset(), get_full_flash_size(), (int)(get_full_flash_size()/get_blk_per_mb()));
 	printf("   | ExtROM  (0x%x) size: %4i block(s)  = %5i MB    |\n",
-		get_ext_rom_offset(), get_ext_rom_size(), (int)((get_ext_rom_size()/get_blk_per_mb())+1));
+		get_ext_rom_offset(), get_ext_rom_size(), round((float)(get_ext_rom_size())/(float)(get_blk_per_mb())));
 	printf("   |____________________________________________________|\n");
 }
 
@@ -2719,17 +2746,17 @@ void oem_help()
 	printf("=> fastboot oem poweroff\n   Powerdown\n");
 	printf("=> fastboot oem nandstat\n   Print nand info\n");
 	printf("=> fastboot oem part-list\n   Display current partition layout\n");
-	printf("=> fastboot oem part-add name:size\n   Create new partition with given name and size\n");
+	printf("=> fastboot oem part-add name:size\n   Create new partition with given name and size in MB\n");
+	printf("=> fastboot oem part-add name:size:b\n   Create new partition with given name and size in blocks\n");
 	printf("=> fastboot oem part-del name\n   Delete named partition\n");
 	printf("=> fastboot oem part-read\n   Reload partition layout from NAND\n");
 	printf("=> fastboot oem part-clear\n   Clear current partition layout\n");
 	printf("=> fastboot oem part-commit\n   All partition changes are TEMP until this cmd is issued\n");
-	printf("=> fastboot oem part-resize name:size\n   Resize partition with given name to new size\n");
+	printf("=> fastboot oem part-resize name:size\n   Resize partition with given name to new size in MB\n");
+	printf("=> fastboot oem part-resize name:size:b\n   Resize partition with given name to new size in blocks\n");
 	printf("=> fastboot oem part-create-default\n   Delete current partition table and create default one\n");
 	printf("=> fastboot oem format-all\n   Wipe complete nand (except clk)\n");
-	printf("=> fastboot continue\n   Boot kernel @ BOOT partition\n");
-	printf("=> fastboot reboot\n   Reboot device\n");
-	printf("=> fastboot reboot-bootloader\n   Reboot into cLK");
+	printf("=> fastboot flash lk lk.img\n   Update clk through fastboot using proper image file");
 }
 void cmd_oem_help()
 {
@@ -2753,6 +2780,7 @@ void cmd_oem_credits(void)
 		myfg = 0x0000;
 	}
 	fbcon_setfg(myfg);
+	printf("   xda-developers.com for being an educational portal,\n");
 	printf("   cedesmith for his great work on porting LK to HD2\n\
 		   and the ppp wrappers,\n");
 	printf("   Travis Geiselbrecht for writing LK,\n");

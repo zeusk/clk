@@ -14,8 +14,11 @@
 
 #define ARRAYSIZE( array ) ( sizeof( array ) / sizeof( array[0] ) )
 
-#define TAG_INFO	"DEVINFO"
-#define PART_DEFAULT	"recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5"
+#define TAG_INFO		"DEVINFO"
+#define PART_DEFAULT		"recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5"
+#define PART_DEFAULT_EXT_ON	"recovery=5,misc=1,boot=5,system=150,userdata=0,null=1!,cache=191!"
+
+const char* partLayout;
 
 int noParts;
 
@@ -85,6 +88,38 @@ int MBToBlocks(size_t size)
 	return size * 1024 * 1024 / 0x20000;
 }
 
+int FillLKPart(const char* lkFile)
+{
+	if ( lkFile == NULL )
+		return 0;
+
+	// Validate lk file
+	struct stat st;
+	if ( stat( lkFile, &st ) != 0 )
+	{
+		fprintf( stderr, "%s lk file not found\n", lkFile );
+		return -1;
+	}
+	// Size in blocks
+	// If we want to include new DEVINFO then we must add 1 block here
+	// and make another change in Save()
+	int lksize = Blocks( st.st_size );
+
+	// Set lk partition first
+	strcpy( vparts.pdef[0].name, "lk" );
+	vparts.pdef[0].size = lksize;
+
+	// Fix partLayout to include lk partition first
+	char lkpart[4096];
+	sprintf( lkpart, "lk=%d!,", lksize);
+	strcat(lkpart, partLayout);
+	partLayout = lkpart;
+
+	noParts++;
+
+	return 0;
+}
+
 int FillRecoveryPart(const char* recoveryFile)
 {
 	if ( recoveryFile == NULL )
@@ -119,16 +154,16 @@ int FillRecoveryPart(const char* recoveryFile)
 	return 0;
 }
 
-int FillPartLayout(const char* partLayout)
+int FillPartLayout(const char* Layout)
 {
-	if ( partLayout == NULL )
+	if ( Layout == NULL )
 	{
 		fprintf( stderr, "Invalid partition layout\n" );
 		return -1;
 	}
 
 	char buf[1024];
-	strcpy( buf, partLayout );
+	strcpy( buf, Layout );
 
 	char *sname, *ssize;
 
@@ -225,7 +260,7 @@ int AddPartImage(const char* fileName)
 	strcpy( data.parts[data.noParts].fileName, fileName );
 	data.parts[data.noParts].data	= NULL;
 	data.parts[data.noParts].length	= 0;
-	data.parts[data.noParts].start	= ( data.noParts ? data.parts[data.noParts-1].end : 2 );				// in sectors (1blk = 64 sectors)
+	data.parts[data.noParts].start	= ( data.noParts ? data.parts[data.noParts-1].end : 2 );		// in sectors (1blk = 64 sectors)
 	data.parts[data.noParts].end	= Blocks( data.parts[data.noParts].start * 0x800 + st.st_size ) * 64;	// in sectors (1blk = 64 sectors)
 	data.noParts++;
 
@@ -300,7 +335,9 @@ void Save(const char* fileName, int nb)
 	char sector[0x800];
 
 	// Write partitions
-	for ( int i = 0; i < data.noParts; i++ )
+	// If we include a new DEVINFO then set uplim to (data.noParts)
+	int uplim = (nb ? data.noParts : (data.noParts - 1));
+	for ( int i = 0; i < uplim ; i++ )
 	{
 		struct NbgPart* part = &data.parts[i];
 
@@ -397,13 +434,13 @@ void Save(const char* fileName, int nb)
 		}
 
 		// Write empty sectors at the end
-		memset( sector, 0xFF, 0x800 );
-		for ( int is = sectorNo; is < part->end; is++ )
-		{
-			fwrite( sector, 0x800, 1, out );
-			if ( nb ) WriteTag( 0xFFFFFFFF, 0xFFFFFFFF, out );
-			sectorNo++;
-		}
+      		memset( sector, 0xFF, 0x800 );
+      		for ( int is = sectorNo; is < part->end; is++ )
+      		{
+      			fwrite( sector, 0x800, 1, out );
+      			if ( nb ) WriteTag( 0xFFFFFFFF, 0xFFFFFFFF, out );
+      			sectorNo++;
+      		}
 	}
 
 	fclose( out );
@@ -412,16 +449,24 @@ void Save(const char* fileName, int nb)
 /* koko : Cosmetic change to output of app */
 int main(int argc, char* argv[])
 {
-	printf( "=== nbgen v1.2: NB Generator\n" );
-	printf( "=== Created by cedesmith - optimized by xdmcdmc - messed up by kokotas\n" );
+	printf( "=== nbgen v1.3: NB Generator\n" );
+	printf( "=== Created by cedesmith - Optimized by xdmcdmc - Messed up by kokotas\n" );
 	printf( "\n" );
 	if ( argc < 2 )
 	{
-		fprintf( stderr, "	Usage:  -o:os.nb|os.payload\n"
+		fprintf( stderr, "   Usage: -o:os.nb\n"
+						 "             create an os.nb to be used from any NBH generator\n"
+						 "          -o:lk.img\n"
+						 "             create an img file to be flashed through fastboot\n"
 						 "          -b:lk.bin\n"
+						 "             set the binary file of the lk\n"
 						 "          -r:recovery.img\n"
+						 "             set the img file of the recovery to be included\n"
 						 "          -p:%s\n"
-						 "          -e:on|off\n", PART_DEFAULT );
+						 "             you can enter the size in     MB: 'name=size' ,\n"
+						 "                                 OR in blocks: 'name=size!'\n"
+						 "          -e:on|off\n"
+						 "             enable|disable ExtROM\n", PART_DEFAULT );
 		return 1;
 	}
 
@@ -431,7 +476,7 @@ int main(int argc, char* argv[])
 	const char* outFile = NULL;
 	const char* bootFile = NULL;
 	const char* recoveryFile = NULL;
-	const char* partLayout = NULL;	
+	partLayout = NULL;
 
 	for ( int i = 1; i < argc; i++ )
 	{
@@ -455,7 +500,7 @@ int main(int argc, char* argv[])
 		{
 		case 'o':
 			outFile = param;
-			nb = strcasecmp( strrchr( param, '.' ), ".nb" ) == 0;
+			nb = (strcasecmp(strrchr(param, '.'), ".nb") == 0 ? 1 : 0);
 			break;
 
 		case 'b':
@@ -471,7 +516,7 @@ int main(int argc, char* argv[])
 			break;
 
 		case 'e':
-			extRom = strcasecmp( param, "on" ) == 0;
+			extRom = (strcasecmp( param, "on" ) == 0 ? 1 : 0);
 			break;
 
 		default:
@@ -488,23 +533,29 @@ int main(int argc, char* argv[])
 
 	strcpy( vparts.tag, TAG_INFO );
 	vparts.extrom_enabled = extRom;
+	fprintf( stderr, "[] ExtROM %s!\n", (extRom == 0 ? "Disabled" : "Enabled") );
 	vparts.size_fixed = 0;
 	vparts.inverted_colors = 0;
 	vparts.show_startup_info = 0;
 	vparts.usb_detect = 0;
+
+	if ( partLayout == NULL ){ // Use default partition layout if not specified through cmd
+		if(vparts.extrom_enabled){
+			partLayout = PART_DEFAULT_EXT_ON;		
+		}else{
+			partLayout = PART_DEFAULT;
+		}
+	}
+
+	// LK partition
+	if ( FillLKPart( bootFile ) == -1 )
+		return 2;
 
 	// Recovery partition
 	if ( FillRecoveryPart( recoveryFile ) == -1 )
 		return 2;
 
 	// Fill partition layout (use default if not specified)
-	if ( partLayout == NULL ){
-		if(vparts.extrom_enabled){
-		partLayout = "recovery=5,misc=1,boot=5,system=150,userdata=0,null=1!,cache=191!";		
-		}else{
-		partLayout = "recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5";
-		}
-	}
 	if ( FillPartLayout( partLayout ) == -1 )
 		return 2;
 
@@ -533,8 +584,8 @@ int main(int argc, char* argv[])
 		return 2;
 
 	// Make file header
-	memset( data.header1, 0, 0x800 );									// fill 1st sector with 00
-	data.header1[0]		= 0xE9;											// fill signature bytes
+	memset( data.header1, 0, 0x800 );	// fill 1st sector with 00
+	data.header1[0]		= 0xE9;		// fill signature bytes
 	data.header1[1]		= 0xFD;
 	data.header1[2]		= 0xFF;
 	data.header1[512-2]	= 0x55;
@@ -547,7 +598,7 @@ int main(int argc, char* argv[])
 	part->StartSector	= data.parts[0].start;
 	part->TotalSectors	= ( data.parts[0].end - data.parts[0].start );
 	PartSetCHS( part );
-
+	
 	/*
 	part++;
 	part->BootInd=0;

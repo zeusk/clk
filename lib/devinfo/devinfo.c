@@ -130,7 +130,7 @@ unsigned device_available_size()
 {
 	unsigned used = 0;
 
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	for ( unsigned i = 1; i < MAX_NUM_PART; i++ ) //KoKo: Skip 1st partition - it is lk's partition - or else we'll leave 4 blocks unexploited
 	{
 		if ( strlen( device_info.partition[i].name ) != 0 && device_info.partition[i].asize == 0 )
 			used += device_info.partition[i].size;
@@ -231,7 +231,12 @@ void device_add(const char* pData)
 	strcpy( name, tmp_buff );
 	tmp_buff = strtok( NULL, ":" );
 	size = atoi( tmp_buff );
-	
+
+	/*
+	 * KoKo: If the size is given in blocks
+	 *	 the user must have entered a second ':' in the command
+	 * 	 So we use that to detect if size is given in blocks or MB
+	 */
 	if (strtok( NULL, ":" ) == NULL)
 	{
 		SizeGivenInBlocks = false;
@@ -305,10 +310,14 @@ void device_resize(const char *pData)
 
 	tmp_buff = strtok( buff, ":" );
 	strcpy( name, tmp_buff );
-	
 	tmp_buff = strtok( NULL, ":" );
 	size = atoi( tmp_buff );
 
+	/*
+	 * KoKo: If the size is given in blocks
+	 *	 the user must have entered a second ':' in the command
+	 * 	 So we use that to detect if size is given in blocks or MB
+	 */
 	if (strtok( NULL, ":" ) == NULL)
 	{
 		SizeGivenInBlocks = false;
@@ -322,60 +331,63 @@ void device_resize(const char *pData)
 void device_resize_ex(const char *pName, unsigned size, bool SizeGivenInBlocks)
 {
 	if ( strlen( pName ) == 0 )
-		return;
-
-	if(!SizeGivenInBlocks)
+			return;
+	
+	if ( memcmp( pName, "lk", strlen( pName ) ) )
 	{
-	// Convert from MB to blocks
-	size = size * blocks_per_mb;
-	}
-
-	// Find partition
-	unsigned i;
-	for ( i = 0; i < MAX_NUM_PART; i++ )
-	{
-		if ( !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
-			break;
-	}
-
-	// Partition exist?
-	if ( i >= MAX_NUM_PART )
-		return;
-
-	// Variable partition?
-	if ( size == 0 )
-	{
-		// Already variable partition
-		if ( device_info.partition[i].asize )
+		if(!SizeGivenInBlocks)
 		{
-			// Update size just to be sure
-			device_info.partition[i].size = device_available_size();
-			return;
+		// Convert from MB to blocks
+		size = size * blocks_per_mb;
 		}
-		
-		// Another partition is set as variable
-		if ( device_variable_exist() )
+	
+		// Find partition
+		unsigned i;
+		for ( i = 0; i < MAX_NUM_PART; i++ )
+		{
+			if ( !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
+				break;
+		}
+	
+		// Partition exist?
+		if ( i >= MAX_NUM_PART )
 			return;
-	}
-
-	// Validate new partition size
-	unsigned available_size = device_available_size() + ( device_info.partition[i].asize ? 0 : device_info.partition[i].size );
-	unsigned required_size  = ( device_variable_exist() ? blocks_per_mb : 0 ) + ( size ? size : blocks_per_mb );	// 1MB reserved for variable partition
-	if ( available_size < required_size )
-		return;
-
-	if ( size == 0 )
-	{
-		// Variable partition, set available size
-		device_info.partition[i].size	= available_size;
-		device_info.partition[i].asize	= 1;
-	}
-	else
-	{
-		// Fixed partition, recalculate variable partition
-		device_info.partition[i].size	= size;
-		device_info.partition[i].asize	= 0;
-		device_resize_asize();
+	
+		// Variable partition?
+		if ( size == 0 )
+		{
+			// Already variable partition
+			if ( device_info.partition[i].asize )
+			{
+				// Update size just to be sure
+				device_info.partition[i].size = device_available_size();
+				return;
+			}
+			
+			// Another partition is set as variable
+			if ( device_variable_exist() )
+				return;
+		}
+	
+		// Validate new partition size
+		unsigned available_size = device_available_size() + ( device_info.partition[i].asize ? 0 : device_info.partition[i].size );
+		unsigned required_size  = ( device_variable_exist() ? blocks_per_mb : 0 ) + ( size ? size : blocks_per_mb );	// 1MB reserved for variable partition
+		if ( available_size < required_size )
+			return;
+	
+		if ( size == 0 )
+		{
+			// Variable partition, set available size
+			device_info.partition[i].size	= available_size;
+			device_info.partition[i].asize	= 1;
+		}
+		else
+		{
+			// Fixed partition, recalculate variable partition
+			device_info.partition[i].size	= size;
+			device_info.partition[i].asize	= 0;
+			device_resize_asize();
+		}
 	}
 }
 
@@ -409,24 +421,27 @@ void device_restruct()
 // Remove partition from ptable
 void device_del(const char *pName)
 {
-	int removed = 0;
-
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	if ( memcmp( pName, "lk", strlen( pName ) ) ) //KoKo: DO NOT allow 'lk' partition to be deleted
 	{
-		if ( !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
+		int removed = 0;
+	
+		for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 		{
-			strcpy( device_info.partition[i].name, "" );
-			device_info.partition[i].size	= 0;
-			device_info.partition[i].asize	= 0;
-
-			removed++;
+			if ( !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
+			{
+				strcpy( device_info.partition[i].name, "" );
+				device_info.partition[i].size	= 0;
+				device_info.partition[i].asize	= 0;
+	
+				removed++;
+			}
 		}
-	}
-
-	if ( removed )
-	{
-		device_restruct();
-		device_resize_asize();
+	
+		if ( removed )
+		{
+			device_restruct();
+			device_resize_asize();
+		}
 	}
 }
 
@@ -434,7 +449,7 @@ void device_del(const char *pName)
 void device_clear()
 {
 	strcpy( device_info.tag, "" );
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	for ( unsigned i = 1; i < MAX_NUM_PART; i++ ) //KoKo: Skip first part(lk) cause we don't want to allow 'lk' partition to be deleted
 	{
 		strcpy( device_info.partition[i].name, "" );
 		device_info.partition[i].size	= 0;
@@ -443,6 +458,7 @@ void device_clear()
 }
 
 // Print current ptable
+#define round(x) ((long)((x)+0.5))
 void device_list()
 {
 	printf("    ____________________________________________________ \n\
@@ -450,13 +466,13 @@ void device_list()
 		   |____________________________________________________|\n\
 		   | MTDBLOCK# |   NAME   | AUTO-SIZE |  BLOCKS  |  MB  |\n");
 	printf("   |===========|==========|===========|==========|======|\n");
-	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	for ( unsigned i = 1; i < MAX_NUM_PART; i++ )
 	{
 		if ( strlen( device_info.partition[i].name ) == 0 )
 			break;
 		
-		printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", i, device_info.partition[i].name,
-			device_info.partition[i].asize, device_info.partition[i].size, device_info.partition[i].size / get_blk_per_mb() );
+      		printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", i, device_info.partition[i].name,
+      			device_info.partition[i].asize, device_info.partition[i].size, round((float)(device_info.partition[i].size) / (float)(get_blk_per_mb())) );
 	}
 	printf("   |___________|__________|___________|__________|______|\n");
 }
