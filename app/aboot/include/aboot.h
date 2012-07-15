@@ -38,6 +38,7 @@ void oem_help(void);
 int boot_linux_from_flash(void);
 int _bad_blocks;
 struct flash_info *flash_info;
+struct ptable flash_devinfo;
 unsigned boot_into_sboot = 0;
 unsigned boot_into_tboot = 0;
 unsigned board_machtype(void);

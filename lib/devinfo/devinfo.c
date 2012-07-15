@@ -60,7 +60,7 @@ unsigned get_ext_rom_size()
 
 int read_device_info(struct dev_info *out)
 {	
-	struct ptable* ptable = flash_get_vptable();
+	struct ptable* ptable = flash_get_devinfo();
 	if ( ptable == NULL ) 
 	{
 		printf( "   ERROR: DEVINFO not found!!!\n" );
@@ -87,7 +87,7 @@ int read_device_info(struct dev_info *out)
 
 int write_device_info(const struct dev_info *in)
 {
-	struct ptable* ptable = flash_get_vptable();
+	struct ptable* ptable = flash_get_devinfo();
 	if ( ptable == NULL )
 	{
 		printf( "   ERROR: DEVINFO not found!!!\n" );
@@ -223,6 +223,7 @@ void device_add(const char* pData)
 	char name[32];
 	char* tmp_buff;
 	unsigned size;
+	bool SizeGivenInBlocks;
 
 	strcpy( buff, pData );
 
@@ -230,17 +231,27 @@ void device_add(const char* pData)
 	strcpy( name, tmp_buff );
 	tmp_buff = strtok( NULL, ":" );
 	size = atoi( tmp_buff );
+	
+	if (strtok( NULL, ":" ) == NULL)
+	{
+		SizeGivenInBlocks = false;
+	}else{
+		SizeGivenInBlocks = true;
+	}
 
-	device_add_ex( name, size );
+	device_add_ex( name, size, SizeGivenInBlocks );
 }
 
-void device_add_ex(const char *pName, unsigned size)
+void device_add_ex(const char *pName, unsigned size, bool SizeGivenInBlocks)
 {
 	if ( strlen( pName ) == 0 )
 		return;
 
+	if(!SizeGivenInBlocks)
+	{
 	// Convert from MB to blocks
 	size = size * blocks_per_mb;
+	}
 
 	// A partition with same name exists?
 	if ( device_partition_exist( pName ) )
@@ -288,24 +299,36 @@ void device_resize(const char *pData)
 	char name[32];
 	char* tmp_buff;
 	unsigned size;
+	bool SizeGivenInBlocks;
 
 	strcpy( buff, pData );
 
 	tmp_buff = strtok( buff, ":" );
 	strcpy( name, tmp_buff );
+	
 	tmp_buff = strtok( NULL, ":" );
 	size = atoi( tmp_buff );
-	
-	device_resize_ex( name, size );
+
+	if (strtok( NULL, ":" ) == NULL)
+	{
+		SizeGivenInBlocks = false;
+	}else{
+		SizeGivenInBlocks = true;
+	}
+
+	device_resize_ex( name, size, SizeGivenInBlocks );
 }
 
-void device_resize_ex(const char *pName, unsigned size)
+void device_resize_ex(const char *pName, unsigned size, bool SizeGivenInBlocks)
 {
 	if ( strlen( pName ) == 0 )
 		return;
 
+	if(!SizeGivenInBlocks)
+	{
 	// Convert from MB to blocks
 	size = size * blocks_per_mb;
+	}
 
 	// Find partition
 	unsigned i;
@@ -448,7 +471,12 @@ void device_create_default()
 	device_add( "boot:5" );
 	device_add( "system:150" );
 	device_add( "userdata:0" );
+	if(device_info.extrom_enabled){
+	device_add( "null:1:b" );
+	device_add( "cache:191:b" );
+	}else{
 	device_add( "cache:5" );
+	}
 }
 
 void device_commit()
@@ -489,6 +517,7 @@ void init_device()
 		device_info.size_fixed = 0;
 		device_info.inverted_colors = 0;
 		device_info.show_startup_info = 0;
+		device_info.usb_detect = 0;
 		device_create_default();
 		device_commit();
 	}

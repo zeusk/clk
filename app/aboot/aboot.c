@@ -617,7 +617,7 @@ void eval_command(void)
 			{
 				int add = atoi( subCommand + 4 );		// MB
 				device_info.partition[device_partition_order(cust_menu.data)-1].asize = 0;
-				device_resize_ex( cust_menu.data, add );
+				device_resize_ex( cust_menu.data, add, false );
 				sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, add );
 				thread_sleep(500);
 				active_menu = &rept_menu;
@@ -627,7 +627,7 @@ void eval_command(void)
 			else if ( !memcmp( subCommand, "add_", 4 ) )
 			{
 				int add = atoi( subCommand + 4 );		// MB
-				device_resize_ex( cust_menu.data, (int) device_partition_size( cust_menu.data ) / get_blk_per_mb() + add );
+				device_resize_ex( cust_menu.data, (int) device_partition_size( cust_menu.data ) / get_blk_per_mb() + add, false );
 				sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
 				redraw_menu();
 				selector_enable();
@@ -642,13 +642,13 @@ void eval_command(void)
 				{				// Can set any partition as variable
 					if ( size > 0 )
 					{
-						device_resize_ex( cust_menu.data, size );
+						device_resize_ex( cust_menu.data, size, false );
 						sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
 					}
 					else if ( size == 0 )	// 0 is accepted
 					{
 						device_info.partition[device_partition_order(cust_menu.data)-1].asize = 1;
-						device_resize_ex( cust_menu.data, size );
+						device_resize_ex( cust_menu.data, size, false );
 						sprintf( cust_menu.MenuId, "%s partition is auto-size (%d MB)", cust_menu.data , (int)( device_partition_size( cust_menu.data ) / get_blk_per_mb() ));
 						thread_sleep(500);
 						active_menu = &rept_menu;
@@ -658,7 +658,7 @@ void eval_command(void)
 				{				// Can not set another partition as variable
 					if ( size > 0 )		// 0 is not accepted
 					{
-						device_resize_ex( cust_menu.data, size );
+						device_resize_ex( cust_menu.data, size, false );
 						sprintf( cust_menu.MenuId, "%s = %d MB", cust_menu.data, (int) ( device_partition_size( cust_menu.data ) / get_blk_per_mb() ) );
 					}
 				}
@@ -1145,7 +1145,7 @@ void eval_command(void)
 		device_del("sboot");
 		if(!mirror_info.partition[device_partition_order("userdata")-1].asize)
 		{
-			device_resize_ex("userdata", new_data_size); // if userdata has a fixed size
+			device_resize_ex("userdata", new_data_size, false); // if userdata has a fixed size
 		}
 		device_resize_asize();
 		device_commit();
@@ -1228,7 +1228,7 @@ void eval_command(void)
 		device_del("tboot");
 		if(!mirror_info.partition[device_partition_order("userdata")-1].asize)
 		{
-			device_resize_ex("userdata", new_data_size); // if userdata has a fixed size
+			device_resize_ex("userdata", new_data_size, false); // if userdata has a fixed size
 		}
 		device_resize_asize();
 		device_commit();
@@ -1267,13 +1267,14 @@ void eval_command(void)
 		printf( "\n   Increasing userdata by %dMB...", cachesize );
 		if(!mirror_info.partition[device_partition_order("userdata")-1].asize) // if userdata has a fixed size
 		{
-			device_resize_ex("userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) + (int)cachesize);
+			device_resize_ex("userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) + (int)cachesize, false);
 		}
 		printf( "\n   Enabling ExtROM..." );
 		device_enable_extrom();
 
 		printf( "\n   Assigning last 24MB of ExtROM to cache...\n" );
-		device_add( "cache:24" );
+		device_add( "null:1:b" );
+		device_add( "cache:191:b" );
 
 		device_resize_asize();
 		device_commit();
@@ -1306,6 +1307,7 @@ void eval_command(void)
 
 		printf( "   Wiping cache..." );
 		flash_erase(ptable_find(flash_get_ptable(), "cache"));
+		device_del( "null" );
 		device_del( "cache" );
 
 		printf( "\n   Disabling ExtROM..." );
@@ -1320,7 +1322,7 @@ void eval_command(void)
 			}
 			if(!mirror_info.partition[device_partition_order("userdata")-1].asize) // if userdata has a fixed size
 			{
-				device_resize_ex( "userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) - 5 + (cachesize-24));
+				device_resize_ex( "userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) - 5 + (cachesize-24), false);
 			}
 			printf( "\n   Assigning last 5MB to cache...\n" );
 			device_add( "cache:5" );
@@ -1330,7 +1332,7 @@ void eval_command(void)
 			printf( "\n   Decreasing userdata by %dMB...", 5 );
 			if(!mirror_info.partition[device_partition_order("userdata")-1].asize) // if userdata has a fixed size
 			{
-				device_resize_ex( "userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) - 5 );
+				device_resize_ex( "userdata", ((int) device_partition_size( "userdata" ) / get_blk_per_mb()) - 5, false );
 			}
 			printf( "\n   Assigning last 5MB to cache...\n" );
 			device_add( "cache:5" );
@@ -2451,7 +2453,7 @@ void prnt_nand_stat(void)
 		printf( "   ERROR: flash info unavailable!!!\n" );
 		return;
 	}
-	ptable = flash_get_vptable();
+	ptable = flash_get_devinfo();
 	if ( ptable == NULL )
 	{
 		printf( "   ERROR: DEVINFO not found!!!\n" );
@@ -2508,7 +2510,7 @@ void cmd_oem_part_format_all()
 	struct ptable *ptable;
 	
 	printf("   Initializing flash format...\n");
-	ptable = flash_get_vptable();
+	ptable = flash_get_devinfo();
 	if (ptable == NULL) 
 	{
 		printf( "   ERROR: DEVINFO not found!!!\n");
@@ -2539,7 +2541,7 @@ void cmd_oem_part_format_vpart()
 	struct ptable *ptable;
 	
 	printf("   Initializing flash format...\n");
-	ptable = flash_get_vptable();
+	ptable = flash_get_devinfo();
 	if (ptable == NULL)
 	{
 		printf( "   ERROR: devinfo not found!!!\n");
@@ -2680,7 +2682,7 @@ void target_init_fboot(void)
 
 static int bbtbl(void *arg)
 {
-	_bad_blocks = bad_block_table(ptable_find(flash_get_vptable(), "task29"));
+	_bad_blocks = bad_block_table(ptable_find(flash_get_devinfo(), "task29"));
 	thread_exit(0);
 	return 0;
 }
@@ -2724,7 +2726,7 @@ static int asize_parts(void *arg)
 							device_info.partition[device_partition_order(block_tbl.blocks[i].partition)-1].size/8,
 							(device_info.partition[device_partition_order(block_tbl.blocks[i].partition)-1].size + addendum)/8,
 							num_of_bad_blocks_in_part(block_tbl.blocks[i].partition));
-	            				device_resize_ex( block_tbl.blocks[i].partition, ((device_info.partition[device_partition_order(block_tbl.blocks[i].partition)-1].size) + addendum)/8 );
+                  				device_resize_ex( block_tbl.blocks[i].partition, ((device_info.partition[device_partition_order(block_tbl.blocks[i].partition)-1].size) + addendum)/8, false );
 	      					if(!device_variable_exist())
 	      					{
 	      						device_info.partition[device_partition_order("userdata")-1].size -= addendum;

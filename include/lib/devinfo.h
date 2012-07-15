@@ -14,7 +14,7 @@
 #define DEV_PART_NAME_SZ	32
 #define MAX_NUM_PART		12
 
-extern struct ptable* flash_get_vptable(void);
+extern struct ptable* flash_get_devinfo(void);
 
 struct _part
 {
@@ -30,6 +30,7 @@ struct dev_info
 	short size_fixed; // due to bad blocks
 	short inverted_colors;
 	short show_startup_info;
+	short usb_detect;
 }device_info;
 
 /* koko : Added struct needed for rearrange partitions */
@@ -49,6 +50,7 @@ struct mirror_dev_info
 	short size_fixed; // due to bad blocks
 	short inverted_colors;
 	short show_startup_info;
+	short usb_detect;
 }mirror_info;
 
 unsigned get_blk_per_mb();
@@ -70,7 +72,7 @@ int mirror_partition_order(const char* pName);
 void device_resize_asize();
 short device_variable_size();
 void device_add(const char *pData);
-void device_add_ex(const char *pName, unsigned size);
+void device_add_ex(const char *pName, unsigned size, bool SizeGivenInBlocks);
 void device_restruct();
 void device_del(const char *pName);
 void device_list();
@@ -82,4 +84,4 @@ void device_read();
 void device_enable_extrom();
 void device_disable_extrom();
 void device_resize(const char *pData);
-void device_resize_ex(const char *pName, unsigned size);
+void device_resize_ex(const char *pName, unsigned size, bool SizeGivenInBlocks);

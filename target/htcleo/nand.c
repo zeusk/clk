@@ -917,7 +917,7 @@ struct ptable *flash_get_ptable(void)
 	return flash_ptable;
 }
 
-struct ptable *flash_get_vptable(void)
+struct ptable *flash_get_devinfo(void)
 {
 	return flash_devinfo;
 }

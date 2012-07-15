@@ -65,6 +65,7 @@ struct vpartitions
 	short size_fixed __attribute__ ((aligned(4)));
 	short inverted_colors __attribute__ ((aligned(4)));
 	short show_startup_info __attribute__ ((aligned(4)));
+	short usb_detect __attribute__ ((aligned(4)));
 }vparts;
 
 int Blocks(size_t bytes)
@@ -137,8 +138,14 @@ int FillPartLayout(const char* partLayout)
 
 	while ( sname != NULL && ssize != NULL )
 	{
-		int size = MBToBlocks( atoi( ssize ) );
-
+		int size;
+		if (strchr(ssize, '!') != NULL)
+		{
+			size = atoi(strndup( ssize, strlen(ssize)-1));
+		}else{
+			size = MBToBlocks( atoi( ssize ) );
+		}
+		
 		// Find partition index
 		int idxPart;
 		for ( idxPart = 0; idxPart < noParts; idxPart++ )
@@ -405,8 +412,8 @@ void Save(const char* fileName, int nb)
 /* koko : Cosmetic change to output of app */
 int main(int argc, char* argv[])
 {
-	printf( "=== nbgen v1.1: NB Generator\n" );
-	printf( "=== Created by cedesmith - optimized by xdmcdmc\n" );
+	printf( "=== nbgen v1.2: NB Generator\n" );
+	printf( "=== Created by cedesmith - optimized by xdmcdmc - messed up by kokotas\n" );
 	printf( "\n" );
 	if ( argc < 2 )
 	{
@@ -484,14 +491,20 @@ int main(int argc, char* argv[])
 	vparts.size_fixed = 0;
 	vparts.inverted_colors = 0;
 	vparts.show_startup_info = 0;
+	vparts.usb_detect = 0;
 
 	// Recovery partition
 	if ( FillRecoveryPart( recoveryFile ) == -1 )
 		return 2;
 
 	// Fill partition layout (use default if not specified)
-	if ( partLayout == NULL )
-		partLayout = PART_DEFAULT;
+	if ( partLayout == NULL ){
+		if(vparts.extrom_enabled){
+		partLayout = "recovery=5,misc=1,boot=5,system=150,userdata=0,null=1!,cache=191!";		
+		}else{
+		partLayout = "recovery=5,misc=1,boot=5,system=150,userdata=0,cache=5";
+		}
+	}
 	if ( FillPartLayout( partLayout ) == -1 )
 		return 2;
 

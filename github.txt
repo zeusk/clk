@@ -1,0 +1,6 @@
+git add . -A
+
+git commit -m "Added option to give size of partition(s) in blocks through fastboot.
+Added same option in nbgen.c."
+
+git push origin BlackCLK

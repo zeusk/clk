@@ -22,7 +22,7 @@
 #define FASTBOOT_MODE   0x77665500
 
 static struct ptable flash_ptable;
-static struct ptable flash_devinfo;
+struct ptable flash_devinfo;
 
 extern unsigned boot_into_recovery;
 extern unsigned blocks_per_mb;
