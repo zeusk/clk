@@ -449,11 +449,11 @@ void device_del(const char *pName)
 void device_clear()
 {
 	strcpy( device_info.tag, "" );
-	for ( unsigned i = 1; i < MAX_NUM_PART; i++ ) //KoKo: Skip first part(lk) cause we don't want to allow 'lk' partition to be deleted
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
-		strcpy( device_info.partition[i].name, "" );
-		device_info.partition[i].size	= 0;
-		device_info.partition[i].asize	= 0;
+			strcpy( device_info.partition[i].name, "" );
+			device_info.partition[i].size	= 0;
+			device_info.partition[i].asize	= 0;
 	}
 }
 
@@ -481,7 +481,13 @@ void device_list()
 /* koko : Changed default ptable so that cache is last part */
 void device_create_default()
 {
+	int lk_size = (device_info.partition[0].size == 0 ? 3 : device_info.partition[0].size);
+	char lk_prt[64];
+	sprintf( lk_prt, "lk:%d:b", lk_size );
+	
 	device_clear();
+	
+	device_add(lk_prt);
 	device_add( "recovery:5" );
 	device_add( "misc:1" );
 	device_add( "boot:5" );

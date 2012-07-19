@@ -928,7 +928,7 @@ void flash_set_ptable(struct ptable *new_ptable)
 	flash_ptable = new_ptable;
 }
 
-void flash_set_vptable(struct ptable * new_ptable)
+void flash_set_devinfo(struct ptable * new_ptable)
 {
 	flash_devinfo = new_ptable;
 }

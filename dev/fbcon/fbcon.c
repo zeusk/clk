@@ -5,6 +5,7 @@
 #include <font8x16.h>
 #include <string.h>
 #include <splash.h>
+#include <kernel/thread.h>
 
 /* Cartesian coordinate system */
 struct pos {
@@ -56,15 +57,18 @@ bool didyouscroll(void){
 
 void fill_screen(uint16_t COLOR)
 {
+	enter_critical_section();
 	memset(config->base, COLOR, (((config->width) * (config->height)) * (config->bpp /8)));
+	exit_critical_section();
 	return;
 }
 void fbcon_clear_region(int start_y, int end_y, unsigned bg){
-
+	enter_critical_section();
 	unsigned area_size = (((end_y - start_y) * FONT_HEIGHT) * config->width) * ((config->bpp) / 8);
 	unsigned start_offset = ((start_y * FONT_HEIGHT) * config->width) * ((config->bpp) / 8);
 
 	memset(config->base + start_offset, bg, area_size);
+	exit_critical_section();
 }
 
 int fbcon_get_y_cord(void){
@@ -165,7 +169,8 @@ static void fbcon_scroll_up(void)
 /* TODO: take stride into account */
 void fbcon_clear(void)
 {
- 	unsigned mybg = 0x0000;
+ 	enter_critical_section();
+	unsigned mybg = 0x0000;
 
 	/* koko : Set the LCD to black till the end of the header */
 	unsigned header_size = ( 6 * FONT_HEIGHT * config->width * (config->bpp/8) );
@@ -181,6 +186,10 @@ void fbcon_clear(void)
 				);
 	/* Set the LCD to BGCOLOR from Menu till the part where logo is displayed */
 	memset(config->base + header_size, mybg, image_base * (config->bpp/8));
+	
+	fbcon_flush();
+	cur_pos.x = cur_pos.y = 0;
+	exit_critical_section();
 }
 
 static void fbcon_set_colors(unsigned bg, unsigned fg)
@@ -354,4 +363,5 @@ void fbcon_disp_logo(void)
 				SPLASH_IMAGE_WIDTH * 2);
 		}
 	}
+    fbcon_flush();
 }

@@ -39,7 +39,7 @@ void target_display_init();
 void cmd_oem_register();
 void shutdown_device(void);
 void dispmid(const char *fmt, int sel);
-void flash_set_vptable(struct ptable * new_ptable);
+void flash_set_devinfo(struct ptable * new_ptable);
 void reboot_device(unsigned reboot_reason);
 unsigned get_boot_reason(void);
 unsigned boot_reason = 0xFFFFFFFF;
@@ -181,7 +181,7 @@ void target_init(void)
 	// task29 partition (to format all partitions at once)
 	ptable_add( &flash_devinfo, PTN_TASK29, flash_start_blk, flash_size_blk, 0, TYPE_APPS_PARTITION, PERM_WRITEABLE );
 
-	flash_set_vptable( &flash_devinfo );
+	flash_set_devinfo( &flash_devinfo );
 
 	init_device();
 
@@ -304,7 +304,10 @@ void htcleo_ptable_dump(struct ptable *ptable)
 }
 
 //cedesmith: current version of qsd8k platform missing display_shutdown so add it
-void lcdc_shutdown(void);
+void lcdc_shutdown(void)
+{
+    writel(0, MSM_MDP_BASE1 + LCDC_BASE + 0x0);
+}
 void display_shutdown(void)
 {
     lcdc_shutdown();

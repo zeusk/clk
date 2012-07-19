@@ -21,8 +21,6 @@ void platform_init(void)
 #define FB_FORMAT_RGB565 0
 #endif
 #define LCDC_FB_BPP 16
-#define MSM_MDP_BASE1 0xAA200000
-#define LCDC_BASE     0xE0000
 
 struct fbcon_config fb_cfg = {
 	.height		= LCDC_FB_HEIGHT,

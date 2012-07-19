@@ -40,6 +40,8 @@
 #ifndef FB_FORMAT_RGB888
 #define FB_FORMAT_RGB888 0
 #endif
+#define MSM_MDP_BASE1 0xAA200000
+#define LCDC_BASE     0xE0000
 
 struct fbcon_config {
 	void		*base;
