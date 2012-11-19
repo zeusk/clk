@@ -30,6 +30,8 @@
 #include <arch/arm.h>
 #include <dev/udc.h>
 #include <string.h>
+#include <stdlib.h>
+#include <target.h>
 #include <kernel/thread.h>
 #include <arch/ops.h>
 
@@ -44,8 +46,8 @@ static const int MISC_PAGES = 3;			// number of pages to save
 static const int MISC_COMMAND_PAGE = 1;		// bootloader command is this page
 static char buf[4096];
 unsigned boot_into_recovery = 0;
-
-void reboot_device(unsigned);
+unsigned selected_boot;
+int show_multi_boot_screen;
 
 int get_recovery_message(struct recovery_message *out)
 {
@@ -55,26 +57,24 @@ int get_recovery_message(struct recovery_message *out)
 	unsigned pagesize = flash_page_size();
 
 	ptable = flash_get_ptable();
-
 	if (ptable == NULL) {
 		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
+	
 	ptn = ptable_find(ptable, "misc");
-
 	if (ptn == NULL) {
 		dprintf(CRITICAL, "   ERROR: No misc partition found\n");
 		return -1;
 	}
 
 	offset += (pagesize * MISC_COMMAND_PAGE);
-	dprintf(CRITICAL, "flash_read misc partition \n");
 	if (flash_read(ptn, offset, buf, pagesize)) {
 		dprintf(CRITICAL, "   ERROR: Cannot read recovery_header\n");
 		return -1;
 	}
-	dprintf(CRITICAL, "flash_read misc partition done\n");
 	memcpy(out, buf, sizeof(*out));
+	
 	return 0;
 }
 
@@ -87,20 +87,18 @@ int set_recovery_message(const struct recovery_message *in)
 	unsigned n = 0;
 
 	ptable = flash_get_ptable();
-
 	if (ptable == NULL) {
 		dprintf(CRITICAL, "   ERROR: Partition table not found\n");
 		return -1;
 	}
+	
 	ptn = ptable_find(ptable, "misc");
-
 	if (ptn == NULL) {
 		dprintf(CRITICAL, "   ERROR: No misc partition found\n");
 		return -1;
 	}
 
 	n = pagesize * (MISC_COMMAND_PAGE + 1);
-
 	if (flash_read(ptn, offset, (void *)SCRATCH_ADDR, n)) {
 		dprintf(CRITICAL, "   ERROR: Cannot read recovery_header\n");
 		return -1;
@@ -113,6 +111,7 @@ int set_recovery_message(const struct recovery_message *in)
 		dprintf(CRITICAL, "   ERROR: flash write fail!\n");
 		return -1;
 	}
+	
 	return 1;
 }
 
@@ -226,38 +225,24 @@ int sdrecovery_init (void)
 {
 	return 0;
 } 
-extern unsigned boot_into_sboot;
-extern unsigned boot_into_tboot;
+
 int recovery_init (void)
 {
 	struct recovery_message msg;
 	struct update_header header;
 	char partition_name[32];
 	unsigned valid_command = 0;
+	show_multi_boot_screen = 0;
 
 	// get recovery message
 	if(get_recovery_message(&msg))
 		return -1;
-	if (((int)msg.command[0]) != (int)0 && ((int)msg.command[0]) != (int)255) {
-		//Debug Statement leading to warnings, will check lateron.
-		//dprintf("Recovery command: %.*s\n", (char *)sizeof(msg.command), msg.command);
-	}
+	/*if (((int)msg.command[0]) != (int)0 && ((int)msg.command[0]) != (int)255) {
+		// Debug Statement leading to warnings, will check lateron.
+		dprintf("Recovery command: %.*s\n", (char *)sizeof(msg.command), msg.command);
+	}*/
 	msg.command[sizeof(msg.command)-1] = '\0'; //Ensure termination
-	if (!strcmp("boot-sboot",msg.command)) {
-		valid_command = 1;
-		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
-		strcpy(msg.status, "OKAY");
-		set_recovery_message(&msg);	// send recovery message
-		boot_into_sboot = 1;	// Boot in sboot
-		return 0;
-	} else if (!strcmp("boot-tboot",msg.command)) {
-		valid_command = 1;
-		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
-		strcpy(msg.status, "OKAY");
-		set_recovery_message(&msg);	// send recovery message
-		boot_into_tboot = 1;	// Boot in sboot
-		return 0;
-	} else if (!strcmp("boot-recovery",msg.command)) {
+	if (!strcmp("boot-recovery",msg.command)) {
 		valid_command = 1;
 		strcpy(msg.command, "");	// to safe against multiple reboot into recovery
 		strcpy(msg.status, "OKAY");
@@ -272,8 +257,6 @@ int recovery_init (void)
 		valid_command = 1;
 		strcpy(partition_name, "FOTA");
 	}
-
-	//Todo: Add support for bootloader update too.
 #endif
 
 	if(!valid_command) {
@@ -290,12 +273,12 @@ int recovery_init (void)
 		strcpy(msg.status, "failed-update");
 		goto SEND_RECOVERY_MSG;
 	}
+	
 	strcpy(msg.status, "OKAY");
 
 SEND_RECOVERY_MSG:
 	strcpy(msg.command, "boot-recovery");
 	set_recovery_message(&msg);	// send recovery message
-	boot_into_recovery = 1;		// Boot in recovery mode
-	reboot_device(0);
+	target_reboot(0);
 	return 0;
 }

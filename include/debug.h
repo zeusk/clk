@@ -33,17 +33,17 @@
 extern "C" {
 #endif
 
+/* debug levels */
+#define ALWAYS		0
+#define CRITICAL 	0
+#define INFO 		1
+#define SPEW 		2
+
 #if defined(DEBUG)
 #define DEBUGLEVEL DEBUG
 #else
-#define DEBUGLEVEL 2
+#define DEBUGLEVEL INFO
 #endif
-
-/* debug levels */
-#define CRITICAL 0
-#define ALWAYS 0
-#define INFO 1
-#define SPEW 2
 
 /* output */
 void _dputc(char c); // XXX for now, platform implements

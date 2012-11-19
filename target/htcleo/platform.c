@@ -1,41 +1,41 @@
-#include <reg.h>
-#include <dev/fbcon.h>
-#include "target/display.h"
 #include <debug.h>
-
-void platform_init_interrupts(void);
-void platform_init_timer();
+#include <target.h>
+#include <board.h>
+#include <pcom.h>
+#include <msm_i2c.h>
+#include <arch/ops.h>
+#include <platform/interrupts.h>
+#include <platform/timer.h>
+#include <platform/gpio.h>
+#include <target/board_htcleo.h>
+#include <target/dex_comm.h>
 
 void platform_early_init(void)
 {
+	board_init();
 	platform_init_interrupts();
 	platform_init_timer();
+	msm_gpio_init();
 }
 
 void platform_init(void)
 {
-	dprintf(INFO, "platform_init()\n");
+	msm_dex_comm_init();	
+    msm_pcom_init();
 }
 
-#ifndef FB_FORMAT_RGB565
-#define FB_FORMAT_RGB565 0
-#endif
-#define LCDC_FB_BPP 16
-
-struct fbcon_config fb_cfg = {
-	.height		= LCDC_FB_HEIGHT,
-	.width		= LCDC_FB_WIDTH,
-	.stride		= LCDC_FB_WIDTH,
-	.format		= FB_FORMAT_RGB565,
-	.bpp		= LCDC_FB_BPP,
-	.update_start	= NULL,
-	.update_done	= NULL,
-};
-
-void display_init(void)
+void platform_exit(void)
 {
-	writel(1, MSM_MDP_BASE1 + LCDC_BASE + 0x0);
-	fb_cfg.base = (unsigned*)readl( MSM_MDP_BASE1 + 0x90008);
-	fbcon_setup(&fb_cfg);
-	fbcon_clear();
+	msm_i2c_remove();
+	msm_prepare_clocks();
+	msm_gpio_deinit();
+	platform_deinit_timer();
+	arch_disable_cache(UCACHE);
+	arch_disable_mmu();
+	platform_deinit_interrupts();
+}
+
+void platform_init_mmu_mappings(void)
+{
+	//dprintf(SPEW, "platform_init_mmu_mappings()\n");
 }

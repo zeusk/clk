@@ -204,7 +204,6 @@ FUNCTION(arch_switch_stacks_and_call)
 	bx		r0	
 	
 /*void dmb(void) */
-
 FUNCTION(dmb)
 #if ARM_CPU_CORTEX_A8
 	dmb    sy

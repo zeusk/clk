@@ -53,3 +53,26 @@ void free(void *ptr)
 	return heap_free(ptr);
 }
 
+void *realloc(void *ptr, size_t size)
+{
+	/*
+	size_t min_size;	
+    void *p = malloc (size);
+	
+    if (p == NULL)
+		return NULL;
+
+    if (ptr != NULL)
+	{
+        min_size = sizeof(ptr);
+        if (size < min_size)
+           min_size = size;
+
+        memcpy (p, ptr, min_size);
+        free (ptr);
+    }
+
+    return p;
+	*/
+	return(heap_realloc(ptr, size));
+}

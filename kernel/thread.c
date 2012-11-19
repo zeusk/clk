@@ -28,9 +28,9 @@
 #include <kernel/thread.h>
 #include <kernel/timer.h>
 #include <kernel/dpc.h>
-#include <platform.h>
+#include <platform/timer.h>
 
-#if DEBUGLEVEL > 1
+#if DEBUGLEVEL > INFO
 #define THREAD_CHECKS 1
 #endif
 
@@ -43,6 +43,9 @@ static struct list_node thread_list;
 
 /* the current thread */
 thread_t *current_thread;
+
+/* the key_listener thread */
+thread_t *keyp_thread;
 
 /* the global critical section count */
 int critical_section_count = 1;
@@ -100,6 +103,33 @@ static void init_thread_struct(thread_t *t, const char *name)
 	strlcpy(t->name, name, sizeof(t->name));
 }
 
+/**
+ * @brief  Create a new thread
+ *
+ * This function creates a new thread.  The thread is initially suspended, so you
+ * need to call thread_resume() to execute it.
+ *
+ * @param  name        Name of thread
+ * @param  entry       Entry point of thread
+ * @param  arg         Arbitrary argument passed to entry()
+ * @param  priority    Execution priority for the thread.
+ * @param  stack_size  Stack size for the thread.
+ *
+ * Thread priority is an integer from 0 (lowest) to 31 (highest).  Some standard
+ * prioritys are defined in <kernel/thread.h>:
+ *
+ *      HIGHEST_PRIORITY
+ *      DPC_PRIORITY
+ *      HIGH_PRIORITY
+ *      DEFAULT_PRIORITY
+ *      LOW_PRIORITY
+ *      IDLE_PRIORITY
+ *      LOWEST_PRIORITY
+ *
+ * Stack size is typically set to DEFAULT_STACK_SIZE
+ *
+ * @return  Pointer to thread object, or NULL on failure.
+ */
 thread_t *thread_create(const char *name, thread_start_routine entry, void *arg, int priority, size_t stack_size)
 {
 	thread_t *t;
@@ -143,6 +173,16 @@ thread_t *thread_create(const char *name, thread_start_routine entry, void *arg,
 	return t;
 }
 
+/**
+ * @brief  Make a suspended thread executable.
+ *
+ * This function is typically called to start a thread which has just been
+ * created with thread_create()
+ *
+ * @param t  Thread to resume
+ *
+ * @return NO_ERROR on success, ERR_NOT_SUSPENDED if thread was not suspended.
+ */
 status_t thread_resume(thread_t *t)
 {
 #if THREAD_CHECKS
@@ -202,6 +242,14 @@ void thread_kill(thread_t *thread)
 	exit_critical_section();
 	panic("somehow fell through thread_exit()\n");
 }
+
+/**
+ * @brief  Terminate the current thread
+ *
+ * Current thread exits with the specified return code.
+ *
+ * This function does not return.
+ */
 void thread_exit(int retcode)
 {
 #if THREAD_CHECKS
@@ -232,10 +280,15 @@ static void idle_thread_routine(void)
 		arch_idle();
 }
 
-/* 
+/**
+ * @brief  Cause another thread to be executed.
+ *
  * Internal reschedule routine. The current thread needs to already be in whatever
  * state and queues it needs to be in. This routine simply picks the next thread and
  * switches to it.
+ *
+ * This is probably not the function you're looking for. See
+ * thread_yield() instead.
  */
 void thread_resched(void)
 {
@@ -249,9 +302,7 @@ void thread_resched(void)
 	ASSERT(in_critical_section());
 #endif
 
-#if THREAD_STATS
-	thread_stats.reschedules++;
-#endif
+	THREAD_STATS_INC(reschedules);
 
 	oldthread = current_thread;
 
@@ -299,7 +350,7 @@ void thread_resched(void)
 	}
 
 #if THREAD_STATS
-	thread_stats.context_switches++;
+	THREAD_STATS_INC(context_switches);
 
 	if (oldthread == idle_thread) {
 		bigtime_t now = current_time_hires();
@@ -315,6 +366,17 @@ void thread_resched(void)
 	ASSERT(newthread->saved_critical_section_count > 0);
 #endif
 
+#if PLATFORM_HAS_DYNAMIC_TIMER
+	/* if we're switching from idle to a real thread, set up a periodic
+	 * timer to run our preemption tick.
+	 */
+	if (oldthread == idle_thread) {
+		timer_set_periodic(&preempt_timer, 10, (timer_callback)thread_timer_tick, NULL);
+	} else if (newthread == idle_thread) {
+		timer_cancel(&preempt_timer);
+	}
+#endif
+
 	/* do the switch */
 	oldthread->saved_critical_section_count = critical_section_count;
 	current_thread = newthread;
@@ -322,6 +384,15 @@ void thread_resched(void)
 	arch_context_switch(oldthread, newthread);
 }
 
+/**
+ * @brief Yield the cpu to another thread
+ *
+ * This function places the current thread at the end of the run queue
+ * and yields the cpu to another waiting thread (if any.)
+ *
+ * This function will return at some later time. Possibly immediately if
+ * no other threads are waiting to execute.
+ */
 void thread_yield(void)
 {
 #if THREAD_CHECKS
@@ -331,9 +402,7 @@ void thread_yield(void)
 
 	enter_critical_section();
 
-#if THREAD_STATS
-	thread_stats.yields++;
-#endif
+	THREAD_STATS_INC(yields);
 
 	/* we are yielding the cpu, so stick ourselves into the tail of the run queue and reschedule */
 	current_thread->state = THREAD_READY;
@@ -344,6 +413,22 @@ void thread_yield(void)
 	exit_critical_section();
 }
 
+
+/**
+ * @brief  Briefly yield cpu to another thread
+ *
+ * This function is similar to thread_yield(), except that it will
+ * restart more quickly.
+ *
+ * This function places the current thread at the head of the run
+ * queue and then yields the cpu to another thread.
+ *
+ * Exception:  If the time slice for this thread has expired, then
+ * the thread goes to the end of the run queue.
+ *
+ * This function will return at some later time. Possibly immediately if
+ * no other threads are waiting to execute.
+ */
 void thread_preempt(void)
 {
 #if THREAD_CHECKS
@@ -355,7 +440,7 @@ void thread_preempt(void)
 
 #if THREAD_STATS
 	if (current_thread != idle_thread)
-		thread_stats.preempts++; /* only track when a meaningful preempt happens */
+		THREAD_STATS_INC(preempts); /* only track when a meaningful preempt happens */
 #endif
 
 	/* we are being preempted, so we get to go back into the front of the run queue if we have quantum left */
@@ -369,6 +454,16 @@ void thread_preempt(void)
 	exit_critical_section();
 }
 
+/**
+ * @brief  Suspend thread until woken.
+ *
+ * This function schedules another thread to execute.  This function does not
+ * return until the thread is made runable again by some other module.
+ *
+ * You probably don't want to call this function directly; it's meant to be called
+ * from other modules, such as mutex, which will presumably set the thread's
+ * state to blocked and add it to some queue or another.
+ */
 void thread_block(void)
 {
 #if THREAD_CHECKS
@@ -412,6 +507,16 @@ static enum handler_return thread_sleep_handler(timer_t *timer, time_t now, void
 	return INT_RESCHEDULE;
 }
 
+/**
+ * @brief  Put thread to sleep; delay specified in ms
+ *
+ * This function puts the current thread to sleep until the specified
+ * delay in ms has expired.
+ *
+ * Note that this function could sleep for longer than the specified delay if
+ * other threads are running.  When the timer expires, this thread will
+ * be placed at the head of the run queue.
+ */
 void thread_sleep(time_t delay)
 {
 	timer_t timer;
@@ -427,6 +532,11 @@ void thread_sleep(time_t delay)
 	exit_critical_section();
 }
 
+/**
+ * @brief  Initialize threading system
+ *
+ * This function is called once, from kmain()
+ */
 void thread_init_early(void)
 {
 	int i;
@@ -450,6 +560,11 @@ void thread_init_early(void)
 	current_thread = t;
 }
 
+/**
+ * @brief Complete thread initialization
+ *
+ * This function is called once at boot time
+ */
 void thread_init(void)
 {
 #if PLATFORM_HAS_DYNAMIC_TIMER
@@ -457,11 +572,19 @@ void thread_init(void)
 #endif
 }
 
+/**
+ * @brief Change name of current thread
+ */
 void thread_set_name(const char *name)
 {
 	strlcpy(current_thread->name, name, sizeof(current_thread->name));
 }
 
+/**
+ * @brief Change priority of current thread
+ *
+ * See thread_create() for a discussion of priority values.
+ */
 void thread_set_priority(int priority)
 {
 	if (priority < LOWEST_PRIORITY)
@@ -471,14 +594,30 @@ void thread_set_priority(int priority)
 	current_thread->priority = priority;
 }
 
+/**
+ * @brief  Become an idle thread
+ *
+ * This function marks the current thread as the idle thread -- the one which
+ * executes when there is nothing else to do.  This function does not return.
+ * This function is called once at boot time.
+ */
 void thread_become_idle(void)
 {
+	enter_critical_section();
 	thread_set_name("idle");
 	thread_set_priority(IDLE_PRIORITY);
 	idle_thread = current_thread;
+	
+	/* release the implicit boot critical section and yield to the scheduler */
+	exit_critical_section();
+	thread_yield();
+
 	idle_thread_routine();
 }
 
+/**
+ * @brief  Dump debugging info about the specified thread.
+ */
 void dump_thread(thread_t *t)
 {
 	dprintf(INFO, "   dump_thread: t %p (%s)\n", t, t->name);
@@ -494,6 +633,9 @@ void dump_thread(thread_t *t)
 	dprintf(INFO, "\n");
 }
 
+/**
+ * @brief  Dump debugging info about all threads
+ */
 void dump_all_threads(void)
 {
 	thread_t *t;
@@ -505,6 +647,9 @@ void dump_all_threads(void)
 	exit_critical_section();
 }
 
+/**
+ * @brief  Check if thread exists in list by searching the thread's name
+ */
 bool thread_exist_in_list(const char *Thread_Name)
 {
 	thread_t *t;
@@ -519,7 +664,9 @@ bool thread_exist_in_list(const char *Thread_Name)
 	return 0;
 }
 
-/* wait queue */
+/**
+ * @brief  Initialize a wait queue
+ */
 void wait_queue_init(wait_queue_t *wait)
 {
 	wait->magic = WAIT_QUEUE_MAGIC;
@@ -541,6 +688,24 @@ static enum handler_return wait_queue_timeout_handler(timer_t *timer, time_t now
 	return INT_NO_RESCHEDULE;
 }
 
+/**
+ * @brief  Block until a wait queue is notified.
+ *
+ * This function puts the current thread at the end of a wait
+ * queue and then blocks until some other thread wakes the queue
+ * up again.
+ *
+ * @param  wait     The wait queue to enter
+ * @param  timeout  The maximum time, in ms, to wait
+ *
+ * If the timeout is zero, this function returns immediately with
+ * ERR_TIMED_OUT.  If the timeout is INFINITE_TIME, this function
+ * waits indefinitely.  Otherwise, this function returns with
+ * ERR_TIMED_OUT at the end of the timeout period.
+ *
+ * @return ERR_TIMED_OUT on timeout, else returns the return
+ * value specified when the queue was woken by wait_queue_wake_one().
+ */
 status_t wait_queue_block(wait_queue_t *wait, time_t timeout)
 {
 	timer_t timer;
@@ -576,6 +741,20 @@ status_t wait_queue_block(wait_queue_t *wait, time_t timeout)
 	return current_thread->wait_queue_block_ret;
 }
 
+/**
+ * @brief  Wake up one thread sleeping on a wait queue
+ *
+ * This function removes one thread (if any) from the head of the wait queue and
+ * makes it executable.  The new thread will be placed at the head of the
+ * run queue.
+ *
+ * @param wait  The wait queue to wake
+ * @param reschedule  If true, the newly-woken thread will run immediately.
+ * @param wait_queue_error  The return value which the new thread will receive
+ * from wait_queue_block().
+ *
+ * @return  The number of threads woken (zero or one)
+ */
 int wait_queue_wake_one(wait_queue_t *wait, bool reschedule, status_t wait_queue_error)
 {
 	thread_t *t;
@@ -613,6 +792,20 @@ int wait_queue_wake_one(wait_queue_t *wait, bool reschedule, status_t wait_queue
 	return ret;
 }
 
+/**
+ * @brief  Wake all threads sleeping on a wait queue
+ *
+ * This function removes all threads (if any) from the wait queue and
+ * makes them executable.  The new threads will be placed at the head of the
+ * run queue.
+ *
+ * @param wait  The wait queue to wake
+ * @param reschedule  If true, the newly-woken threads will run immediately.
+ * @param wait_queue_error  The return value which the new thread will receive
+ * from wait_queue_block().
+ *
+ * @return  The number of threads woken (zero or one)
+ */
 int wait_queue_wake_all(wait_queue_t *wait, bool reschedule, status_t wait_queue_error)
 {
 	thread_t *t;
@@ -656,6 +849,11 @@ int wait_queue_wake_all(wait_queue_t *wait, bool reschedule, status_t wait_queue
 	return ret;
 }
 
+/**
+ * @brief  Free all resources allocated in wait_queue_init()
+ *
+ * If any threads were waiting on this queue, they are all woken.
+ */
 void wait_queue_destroy(wait_queue_t *wait, bool reschedule)
 {
 #if THREAD_CHECKS
@@ -666,11 +864,23 @@ void wait_queue_destroy(wait_queue_t *wait, bool reschedule)
 	wait->magic = 0;
 }
 
+/**
+ * @brief  Wake a specific thread in a wait queue
+ *
+ * This function extracts a specific thread from a wait queue, wakes it, and
+ * puts it at the head of the run queue.
+ *
+ * @param t  The thread to wake
+ * @param reschedule  If true, the newly-woken threads will run immediately.
+ * @param wait_queue_error  The return value which the new thread will receive
+ *   from wait_queue_block().
+ *
+ * @return ERR_NOT_BLOCKED if thread was not in any wait queue.
+ */
 status_t thread_unblock_from_wait_queue(thread_t *t, bool reschedule, status_t wait_queue_error)
 {
-	enter_critical_section();
-
 #if THREAD_CHECKS
+	ASSERT(in_critical_section());
 	ASSERT(t->magic == THREAD_MAGIC);
 #endif
 
@@ -692,8 +902,6 @@ status_t thread_unblock_from_wait_queue(thread_t *t, bool reschedule, status_t w
 
 	if (reschedule)
 		thread_resched();
-
-	exit_critical_section();
 
 	return NO_ERROR;
 }

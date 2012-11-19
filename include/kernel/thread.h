@@ -93,7 +93,11 @@ typedef struct thread {
 #define HIGH_PRIORITY ((NUM_PRIORITIES / 4) * 3)
 
 /* stack size */
-#define DEFAULT_STACK_SIZE 8192
+#ifdef CUSTOM_DEFAULT_STACK_SIZE
+#define DEFAULT_STACK_SIZE CUSTOM_DEFAULT_STACK_SIZE
+#else
+#define DEFAULT_STACK_SIZE ARCH_DEFAULT_STACK_SIZE
+#endif
 
 /* functions */
 void thread_init_early(void);
@@ -125,14 +129,17 @@ extern thread_t *current_thread;
 /* the idle thread */
 extern thread_t *idle_thread;
 
+/* the key-press thread */
+extern thread_t *keyp_thread;
+
 /* critical sections */
 extern int critical_section_count;
 
 static inline __ALWAYS_INLINE void enter_critical_section(void)
 {
-	critical_section_count++;
-	if (critical_section_count == 1)
+	if (critical_section_count == 0)
 		arch_disable_ints();
+	critical_section_count++;
 }
 
 static inline __ALWAYS_INLINE void exit_critical_section(void)
@@ -226,6 +233,12 @@ struct thread_stats {
 };
 
 extern struct thread_stats thread_stats;
+
+#define THREAD_STATS_INC(name) do { thread_stats.name++; } while(0)
+
+#else
+
+#define THREAD_STATS_INC(name) do { } while (0)
 
 #endif
 

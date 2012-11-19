@@ -59,10 +59,15 @@ static void call_constructors(void)
 		ctor++;
 	}
 }
-
+	
 /* called from crt0.S */
+#ifdef HANDLE_LINUX_KERNEL_ARGS
+void kmain(unsigned, unsigned, unsigned *) __NO_RETURN __EXTERNALLY_VISIBLE;
+void kmain(unsigned zero_arg, unsigned mach_type, unsigned *atags_ptr)
+#else
 void kmain(void) __NO_RETURN __EXTERNALLY_VISIBLE;
 void kmain(void)
+#endif
 {
 	// get us into some sort of thread context
 	thread_init_early();
@@ -72,39 +77,43 @@ void kmain(void)
 
 	// do any super early platform initialization
 	platform_early_init();
-
+	
 	// do any super early target initialization
 	target_early_init();
-
-	dprintf(INFO, "welcome to lk\n\n");
+	//dprintf(SPEW, "Initializing LK\n");
+	/* dprintf(SPEW,  "\n __________________________________________________________ \
+						|                                                          |");
+	dprintf(SPEW,    "|  [L] i t t l e - [K] e r n e l      p o o p L o a d e r  |\
+						|__________________________________________________________|\n\n"); */
 	
 	// deal with any static constructors
-	dprintf(SPEW, "calling constructors\n");
+	//dprintf(SPEW, "Calling constructors\n");
 	call_constructors();
 
 	// bring up the kernel heap
-	dprintf(SPEW, "initializing heap\n");
+	//dprintf(SPEW, "Initializing heap\n");
 	heap_init();
 
 	// initialize the threading system
-	dprintf(SPEW, "initializing threads\n");
+	//dprintf(SPEW, "Initializing threads\n");
 	thread_init();
 
 	// initialize the dpc system
-	dprintf(SPEW, "initializing dpc\n");
+	//dprintf(SPEW, "Initializing dpc\n");
 	dpc_init();
 
 	// initialize kernel timers
-	dprintf(SPEW, "initializing timers\n");
+	//dprintf(SPEW, "Initializing timers\n");
 	timer_init();
 
 #if (!ENABLE_NANDWRITE)
 	// create a thread to complete system initialization
-	dprintf(SPEW, "creating bootstrap completion thread\n");
-	thread_resume(thread_create("bootstrap2", &bootstrap2, NULL, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE));
-
+	//dprintf(SPEW, "\nCreating bootstrap completion thread\n");
+	
 	// enable interrupts
 	exit_critical_section();
+	
+	thread_resume(thread_create("bootstrap2", &bootstrap2, NULL, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE));
 
 	// become the idle thread
 	thread_become_idle();
@@ -117,40 +126,45 @@ int main(void);
 
 static int bootstrap2(void *arg)
 {
-	dprintf(SPEW, "top of bootstrap2()\n");
-
+	//dprintf(SPEW, "Initializing arch\n");
 	arch_init();
 	
 	// initialize the rest of the platform
-	dprintf(SPEW, "initializing platform\n");
+	//dprintf(SPEW, "Initializing platform\n");
 	platform_init();
 	
 	// initialize the target
-	dprintf(SPEW, "initializing target\n");
+	//dprintf(SPEW, "Initializing target\n\n");
+	/* dprintf(SPEW,"    __________________________________________________      \
+					   |                                                  |     ");
+	dprintf(SPEW,"   | Pressing BACK KEY will attempt to load LK's menu |     ");
+	dprintf(SPEW,"   | Pressing HOME KEY will attempt to load recovery  |     ");
+	dprintf(SPEW,"   | Pressing MENU KEY will attempt to load sboot     |     \
+					   |__________________________________________________|     \n\n"); */
 	target_init();
 
-	dprintf(SPEW, "calling apps_init()\n");
+	//dprintf(SPEW, "Determining completion according to boot reason\n");
 	apps_init();
-
+	
 	return 0;
 }
 
 #if (ENABLE_NANDWRITE)
 void bootstrap_nandwrite(void)
 {
-	dprintf(SPEW, "top of bootstrap2()\n");
+	dprintf(SPEW, "Top of bootstrap2()\n");
 
 	arch_init();
 
 	// initialize the rest of the platform
-	dprintf(SPEW, "initializing platform\n");
+	dprintf(SPEW, "Initializing platform\n");
 	platform_init();
 
 	// initialize the target
-	dprintf(SPEW, "initializing target\n");
+	dprintf(SPEW, "Initializing target\n");
 	target_init();
 
-	dprintf(SPEW, "calling nandwrite_init()\n");
+	dprintf(SPEW, "Calling nandwrite_init()\n");
 	nandwrite_init();
 
 	return 0;

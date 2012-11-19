@@ -32,6 +32,7 @@ struct timer;
 typedef enum handler_return (*timer_callback)(struct timer *, time_t now, void *arg);
 
 #define TIMER_MAGIC 'timr'
+#define PLATFORM_HAS_DYNAMIC_TIMER	0
 
 typedef struct timer {
 	int magic;
@@ -54,6 +55,5 @@ void timer_initialize(timer_t *);
 void timer_set_oneshot(timer_t *, time_t delay, timer_callback, void *arg);
 void timer_set_periodic(timer_t *, time_t period, timer_callback, void *arg);
 void timer_cancel(timer_t *);
-
 #endif
 

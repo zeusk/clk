@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2008, Google Inc.
- * All rights reserved.
+ * Copyright (c) 2008, Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _PLATFORM_MSM7K_IRQS_H_
-#define _PLATFORM_MSM7K_IRQS_H_
+#ifndef _PLATFORM_QSD8K_IRQS_H_
+#define _PLATFORM_QSD8K_IRQS_H_
 
 #define INT_A9_M2A_0         0
 #define INT_A9_M2A_1         1
@@ -99,33 +98,47 @@
 #define INT_SIRC_1           (32 + 31)
 
 /* secondary interrupt controller */
+#define INT_UART1                     (64 + 0)
+#define INT_UART2                     (64 + 1)
+#define INT_UART3                     (64 + 2)
+#define INT_UART1_RX                  (64 + 3)
+#define INT_UART2_RX                  (64 + 4)
+#define INT_UART3_RX                  (64 + 5)
+#define INT_SPI_INPUT                 (64 + 6)
+#define INT_SPI_OUTPUT                (64 + 7)
+#define INT_SPI_ERROR                 (64 + 8)
+#define INT_GPIO_GROUP1               (64 + 9)
+#define INT_GPIO_GROUP2               (64 + 10)
+#define INT_GPIO_GROUP1_SECURE        (64 + 11)
+#define INT_GPIO_GROUP2_SECURE        (64 + 12)
+#define INT_SC_AVS_SVIC               (64 + 13)
+#define INT_SC_AVS_REQ_UP             (64 + 14)
+#define INT_SC_AVS_REQ_DOWN           (64 + 15)
+#define INT_PBUS_ERR                  (64 + 16)
+#define INT_AXI                       (64 + 17)
+#define INT_SMI                       (64 + 18)
+#define INT_EBI                       (64 + 19)
+#define INT_IMEM                      (64 + 20)
+#define INT_SC_TEMP_SENSOR            (64 + 21)
+#define INT_TV_ENC                    (64 + 22)
 
-#define INT_UART1_IRQ        (64 + 0)
-#define INT_UART2_IRQ        (64 + 1)
-#define INT_UART3_IRQ        (64 + 2)
-#define INT_UART1_RX         (64 + 3)
-#define INT_UART2_RX         (64 + 4)
-#define INT_UART3_RX         (64 + 5)
-#define INT_SPI_INPUT        (64 + 6)
-#define INT_SPI_OUTPUT       (64 + 7)
-#define INT_SPI_ERROR        (64 + 8)
-#define INT_GPIO1_SHADOW     (64 + 9)
-#define INT_GPIO2_SHADOW     (64 + 10)
-#define INT_GPIO1_SECURE     (64 + 11)
-#define INT_GPIO2_SECURE     (64 + 12)
-#define INT_SC_AVS_SVIC      (64 + 13)
-#define INT_SC_AVS_REQ_UP    (64 + 14)
-#define INT_SC_AVS_REQ_DOWN  (64 + 15)
-#define INT_PBUS_ERR         (64 + 16)
-#define INT_AXI              (64 + 17)
-#define INT_SMI              (64 + 18)
-#define INT_EBI              (64 + 19)
-#define INT_IMEM             (64 + 20)
-#define INT_SC_TEMP_SENSOR   (64 + 21)
-#define INT_TV_ENC           (64 + 22)
+#define MSM_IRQ_BIT(irq)              (1 << ((irq) & 31))
 
-#define MSM_IRQ_BIT(irq)     (1 << ((irq) & 31))
+#define NR_MSM_IRQS    		64
+#define NR_SIRC_IRQS   		23
+#define NR_GPIO_IRQS  		165
+#define NR_BOARD_IRQS  		64
+#define NR_MICROP_IRQS  	16
 
-#define NR_IRQS 64
+#define FIRST_SIRC_IRQ   (NR_MSM_IRQS)
+#define FIRST_GPIO_IRQ   (NR_MSM_IRQS + NR_SIRC_IRQS)
+#define FIRST_BOARD_IRQ  (NR_MSM_IRQS + NR_SIRC_IRQS + NR_GPIO_IRQS)
+#define FIRST_MICROP_IRQ (NR_MSM_IRQS + NR_SIRC_IRQS + NR_GPIO_IRQS + NR_BOARD_IRQS)
+#define NR_IRQS          (NR_MSM_IRQS + NR_SIRC_IRQS + NR_GPIO_IRQS + NR_BOARD_IRQS + NR_MICROP_IRQS)
+
+#define MSM_GPIO_TO_INT(n)   (FIRST_GPIO_IRQ + (n))
+#define MSM_INT_TO_GPIO(n)   ((n) - NR_MSM_IRQS)
+#define MSM_MICROP_TO_INT(n) (FIRST_MICROP_IRQ + (n))
+#define MSM_INT_TO_MICROP(n) ((n) - FIRST_MICROP_IRQ)
 
 #endif

@@ -20,89 +20,28 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <debug.h>
-#include <list.h>
-#include <err.h>
-#include <string.h>
-#include <stdlib.h>
-#include <lib/fs.h>
+#include <lib/fs/fat.h>
 
-#define USE_FILELIB_STDIO_COMPAT_NAMES 1
-
-#include <fat_filelib.h>
-#if WITH_DEV_SD
-#include <sd.h>
-#endif
-
-int fs_read(uint32 sector, uint8 *buffer, uint32 sector_count)
+long fs_read(const char *filename, void *buffer, unsigned long maxsize)
 {
-	// IO device read
-#if WITH_DEV_SD
-	sd_card->read(sd_card, sector, sector_count*512, buffer);
+#ifdef HTCLEO_SUPPORT_VFAT
+	return file_fat_read(filename, buffer, maxsize);
 #endif
-	return 1;
+	return 0;
 }
 
-int fs_write(uint32 sector, uint8 *buffer, uint32 sector_count)
+int fs_write(const char *filename, void *buffer, unsigned long maxsize)
 {
-	// IO device write
-#if WITH_DEV_SD
-	sd_card->write(sd_card, sector, sector_count*512, buffer);
+#ifdef HTCLEO_SUPPORT_VFAT
+	return file_fat_write(filename, buffer, maxsize);
 #endif
-	return 1;
+	return 0;
 }
 
 void fs_init(void)
 {
-	// Initialize media
-#if WITH_DEV_SD
-	sd_init();
+#ifdef HTCLEO_SUPPORT_VFAT
+	fat_register_device(&mmc_dev, 1);
+	file_fat_detectfs();
 #endif
-	// Initialize FAT IO library.
-	fl_init();
-
-	// Attach the media IO functions to the File IO library
-	if (fl_attach_media(fs_read, fs_write) != FAT_INIT_OK)
-        {
-                printf("\n   ERROR: Media attach failed!\n");
-                return; 
-        }
-
-	// Print list of dirs @ root of sdcard - test purpose
-	fl_listdirectory("/");
-}
-
-void fs_stop(void)
-{
-	// Shutdown the FAT IO library
-	fl_shutdown();
-}
-
-ssize_t fs_load_file(const char *path, void *ptr)
-{
-	FL_FILE *file;
-	int err = 0; long file_length = 0;
-	const char mode[] = {'r'};
-
-	// Open file if it exists
-	file = fopen(path, mode);
-	if (file == NULL){
-		printf("\n   ERROR: Open file failed!");
-		return 1;
-	}else{
-		printf("\n   %s opened successfully!", path);
-	}
-
-	// Calc file length
-	fseek(file, 0, SEEK_END);
-	file_length = ftell(file);
-	printf("\n   File length : %u bytes", file_length);
-	fseek(file, 0, SEEK_SET);
-
-	// Read the file and close after
-	ptr = malloc(sizeof(char) * file_length);
-	err = fread(ptr, sizeof(char), file_length, file);
-	fclose(file);
-
-	return err;
 }

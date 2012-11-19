@@ -23,9 +23,6 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
-time_t current_time(void);
-bigtime_t current_time_hires(void);
-
 /* super early platform initialization, before almost everything */
 void platform_early_init(void);
 
@@ -35,4 +32,6 @@ void platform_init(void);
 /* called by the arch init code to get the platform to set up any mmu mappings it may need */
 void platform_init_mmu_mappings(void);
 
+/* platform exit */
+void platform_exit(void);
 #endif

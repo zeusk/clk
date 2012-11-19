@@ -23,14 +23,28 @@
 #ifndef __TARGET_H
 #define __TARGET_H
 
+#include <arch/mtype.h>
 /* super early platform initialization, before almost everything */
 void target_early_init(void);
-
 /* later init, after the kernel has come up */
 void target_init(void);
-/* set ptable to new value without rebooting */
-void ptable_re_init(void);
+/* prepare the device for (re)boot */
+void target_exit(void);
 /* get memory address for fastboot image loading */
-void *target_get_scratch_address(void);
+void* target_get_scratch_address(void);
+/* get memory size for fastboot image loading */
+unsigned target_get_scratch_size(void);
+
+void* target_atag(unsigned* ptr);
+unsigned target_machtype(void);
+char* target_get_cmdline(void);
+unsigned target_support_flashlight(void);
+void* target_flashlight(void *arg);
+unsigned target_pause_for_battery_charge(void);
+void target_battery_charging_enable(unsigned enable, unsigned disconnect);
+
+void target_shutdown(void);
+void target_reboot(unsigned reboot_reason);
+unsigned target_check_reboot_mode(void);
 
 #endif

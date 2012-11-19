@@ -172,6 +172,52 @@ FUNCTION(arch_disable_cache)
 	msr		cpsr, r12
 	ldmfd	sp!, {r4-r11, pc}
 
+/* void arch_enable_cache(uint flags) */
+FUNCTION(arch_enable_cache)
+	stmfd	sp!, {r4-r11, lr}
+
+	mov		r7, r0						// save flags
+
+	mrs		r12, cpsr					// save the old interrupt state
+	.word	0xf10c01c0	/* cpsid iaf */	// interrupts disabled
+	
+.Ldcache_enable:
+	tst		r7, #DCACHE
+	beq		.Licache_enable
+	mrc     p15, 0, r0, c1, c0, 0		// cr1
+	tst		r0, #(1<<2)					// is the dcache already enabled?
+	bne		.Licache_enable
+
+	// invalidate L1 and L2
+	// NOTE: trashes a bunch of registers, can't be spilling stuff to the stack
+	bl		invalidate_cache_v7
+
+#if ARM_WITH_L2
+	// enable the L2, if present
+	mrc     p15, 0, r0, c1, c0, 1		// aux cr1
+	orr		r0, #(1<<1)
+	mcr		p15, 0, r0, c1, c0, 1		// enable L2 dcache
+#endif
+
+	mrc     p15, 0, r0, c1, c0, 0		// cr1
+	orr		r0, #(1<<2)
+	mcr		p15, 0, r0, c1, c0, 0		// enable dcache
+
+.Licache_enable:
+	tst		r7, #ICACHE
+	beq		.Ldone_enable
+
+	mov		r0, #0
+	mcr		p15, 0, r0, c7, c5, 0		// invalidate icache to PoU
+
+	mrc     p15, 0, r0, c1, c0, 0		// cr1
+	orr		r0, #(1<<12)
+	mcr		p15, 0, r0, c1, c0, 0		// enable icache
+
+.Ldone_enable:
+	msr		cpsr, r12
+	ldmfd	sp!, {r4-r11, pc}
+
 // flush & invalidate cache routine, trashes r0-r6, r9-r11
 flush_invalidate_cache_v7:
 	/* from ARMv7 manual, B2-17 */

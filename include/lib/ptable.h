@@ -73,8 +73,8 @@ struct btable
 	unsigned int *block_status;
 	int count;
 }block_tbl;
-int num_of_bad_blocks_in_part(const char *pName);
-int small_part_with_bad_blocks_exists();
+//int num_of_bad_blocks_in_part(const char *pName);
+//int small_part_with_bad_blocks_exists();
 
 /* tools to populate and query the partition table */
 void ptable_init(struct ptable *ptable);

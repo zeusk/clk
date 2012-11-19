@@ -30,38 +30,12 @@
 
 struct dpc {
 	struct list_node node;	
-
 	dpc_callback cb;
 	void *arg;
 };
 
 static struct list_node dpc_list = LIST_INITIAL_VALUE(dpc_list);
 static event_t dpc_event;
-
-static int dpc_thread_routine(void *arg);
-
-void dpc_init(void)
-{
-	event_init(&dpc_event, false, 0);
-
-	thread_resume(thread_create("dpc", &dpc_thread_routine, NULL, DPC_PRIORITY, DEFAULT_STACK_SIZE));
-}
-
-status_t dpc_queue(dpc_callback cb, void *arg, uint flags)
-{
-	struct dpc *dpc;
-
-	dpc = malloc(sizeof(struct dpc));
-
-	dpc->cb = cb;
-	dpc->arg = arg;
-	enter_critical_section();
-	list_add_tail(&dpc_list, &dpc->node);
-	event_signal(&dpc_event, (flags & DPC_FLAG_NORESCHED) ? false : true);
-	exit_critical_section();
-
-	return NO_ERROR;
-}
 
 static int dpc_thread_routine(void *arg)
 {
@@ -75,9 +49,7 @@ static int dpc_thread_routine(void *arg)
 		exit_critical_section();
 
 		if (dpc) {
-//			dprintf("dpc calling %p, arg %p\n", dpc->cb, dpc->arg);
 			dpc->cb(dpc->arg);
-
 			free(dpc);
 		}
 	}
@@ -85,4 +57,23 @@ static int dpc_thread_routine(void *arg)
 	return 0;
 }
 
+void dpc_init(void)
+{
+	event_init(&dpc_event, false, 0);
 
+	thread_resume(thread_create("dpc", &dpc_thread_routine, NULL, DPC_PRIORITY, DEFAULT_STACK_SIZE));
+}
+
+status_t dpc_queue(dpc_callback cb, void *arg, uint flags)
+{
+	struct dpc *dpc;
+	dpc = malloc(sizeof(struct dpc));
+	dpc->cb = cb;
+	dpc->arg = arg;
+	enter_critical_section();
+	list_add_tail(&dpc_list, &dpc->node);
+	event_signal(&dpc_event, (flags & DPC_FLAG_NORESCHED) ? false : true);
+	exit_critical_section();
+
+	return NO_ERROR;
+}

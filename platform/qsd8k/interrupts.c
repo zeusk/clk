@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2008, Google Inc.
- * All rights reserved.
+ * Copyright (c) 2008, Google Inc. All rights reserved.
+ * Copyright (c) 2012, Shantanu Gupta <shans95g@gmail.com> 
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,6 @@
 #include <reg.h>
 #include <kernel/thread.h>
 #include <platform/interrupts.h>
-
 #include <platform/irqs.h>
 #include <platform/iomap.h>
 
@@ -54,7 +53,7 @@
 #define VIC_INT_POLARITY1   VIC_REG(0x0054)  /* 1: NEG, 0: POS */
 #define VIC_NO_PEND_VAL     VIC_REG(0x0060)
 #define VIC_INT_MASTEREN    VIC_REG(0x0068)  /* 1: IRQ, 2: FIQ     */
-#define VIC_CONFIG          VIC_REG(0x006C)  /* 1: USE ARM1136 VIC */
+#define VIC_CONFIG          VIC_REG(0x006C)  /* 1: USE SC VIC */
 #define VIC_SECURITY0       VIC_REG(0x0070)
 #define VIC_SECURITY1       VIC_REG(0x0074)
 #define VIC_IRQ_STATUS0     VIC_REG(0x0080)
@@ -78,6 +77,10 @@
 #define VIC_FIQ_IN_SERVICE  VIC_REG(0x00F0)
 #define VIC_FIQ_IN_STACK    VIC_REG(0x00F4)
 #define VIC_TEST_BUS_SEL    VIC_REG(0x00F8)
+#define VIC_IRQ_CTRL_CONFIG VIC_REG(0x00FC)
+#define VIC_VECTPRIORITY(n) VIC_REG(0x0200+((n) * 4))
+#define VIC_VECTADDR(n)     VIC_REG(0x0400+((n) * 4))
+
 
 #define SIRC_REG(off) (MSM_SIRC_BASE + (off))
 
@@ -108,26 +111,44 @@ void platform_init_interrupts(void)
 	writel(0xffffffff, VIC_INT_TYPE0);
 	writel(0xffffffff, VIC_INT_TYPE1);
 	writel(0, VIC_CONFIG);
+	writel(1, VIC_INT_EN0);
+	writel(1, VIC_INT_EN1);
 	writel(1, VIC_INT_MASTEREN);
+}
+
+void platform_deinit_interrupts(void)
+{
+	writel(0, VIC_INT_MASTEREN);
+	writel(0, VIC_INT_EN0);
+	writel(0, VIC_INT_EN1);
+	writel(0xffffffff, VIC_INT_CLEAR0);
+	writel(0xffffffff, VIC_INT_CLEAR1);
+	writel(0, VIC_INT_SELECT0);
+	writel(0, VIC_INT_SELECT1);
+	writel(0xffffffff, VIC_INT_TYPE0);
+	writel(0xffffffff, VIC_INT_TYPE1);
+	writel(0, VIC_CONFIG);
 }
 
 enum handler_return platform_irq(struct arm_iframe *frame)
 {
 	unsigned num;
-	enum handler_return ret;
+	enum handler_return ret = INT_NO_RESCHEDULE;
 	num = readl(VIC_IRQ_VEC_RD);
 	num = readl(VIC_IRQ_VEC_PEND_RD);
 	if (num > NR_IRQS)
 		return 0;
 	writel(1 << (num & 31), (num > 31) ? VIC_INT_CLEAR1 : VIC_INT_CLEAR0);
-	ret = handler[num].func(handler[num].arg);
+	if (handler[num].func)
+		ret = handler[num].func(handler[num].arg);
 	writel(0, VIC_IRQ_VEC_WR);
+
 	return ret;
 }
 
 void platform_fiq(struct arm_iframe *frame)
 {
-	PANIC_UNIMPLEMENTED;
+	for(;;);
 }
 
 status_t mask_interrupt(unsigned int vector)
@@ -150,10 +171,8 @@ void register_int_handler(unsigned int vector, int_handler func, void *arg)
 {
 	if (vector >= NR_IRQS)
 		return;
-
 	enter_critical_section();
 	handler[vector].func = func;
 	handler[vector].arg = arg;
 	exit_critical_section();
 }
-

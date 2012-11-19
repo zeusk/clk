@@ -36,28 +36,49 @@ void *memcpy (void *, void const *, size_t);
 void *memmove(void *, void const *, size_t);
 void *memset (void *, int, size_t);
 
+//Concatenates two strings.
 char       *strcat(char *, char const *);
+//Locates the first occurrence of a specified character in a string.
 char       *strchr(char const *, int) __PURE;
+//Compares the value of two strings.
 int         strcmp(char const *, char const *) __PURE;
+//Copies one string into another.
 char       *strcpy(char *, char const *);
-char const *strerror(int) __CONST;
+//Calculates the length of a string.
 size_t      strlen(char const *) __PURE;
+//Adds a specified length of one string to another string.
 char       *strncat(char *, char const *, size_t);
+//Compares two strings up to a specified length. 
 int         strncmp(char const *, char const *, size_t) __PURE;
+//Copies a specified length of one string into another.
 char       *strncpy(char *, char const *, size_t);
+//Locates specified characters in a string.
 char       *strpbrk(char const *, char const *) __PURE;
+//Locates the last occurrence of a character within a string. 
 char       *strrchr(char const *, int) __PURE;
+//Locates the first character in a string that is not part of specified set of characters. 
 size_t      strspn(char const *, char const *) __PURE;
+//Finds the length of the first substring in a string of characters not in a second string.
 size_t      strcspn(const char *s, const char *) __PURE;
+//Locates the first occurrence of a string in another string.
 char       *strstr(char const *, char const *) __PURE;
+//Locates a specified token in a string.
 char       *strtok(char *, char const *);
+//Compares two strings based on the collating elements for the current locale.
 int         strcoll(const char *s1, const char *s2) __PURE;
+//Transforms strings according to locale.
 size_t      strxfrm(char *dest, const char *src, size_t n) __PURE;
+//Reserves storage space for the copy of a string.
 char       *strdup(const char *str) __MALLOC;
+//Reverses the order of characters in a string.
+char*       strrev(char* str);
+//Search & replace a substring by another one.
+char*		replace(const char *str, const char *oldstr, const char *newstr, int *count);
+//Replace a character at a specified position
+char* 		sreplace(char *buf, int c, int pos);
+
 char        tolower(char c);
 char        toupper(char c);
-char*       strrev(char* str);
-char*       itoa(int n, char* s, int b);
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -76,6 +97,8 @@ size_t strlcpy(char *, char const *, size_t);
 int    strncasecmp(char const *, char const *, size_t)  __PURE;
 int    strnicmp(char const *, char const *, size_t) __PURE;
 size_t strnlen(char const *s, size_t count) __PURE;
+unsigned long strtoul(const char *str, char **endptr, int base);
+long strtol(const char *str, char **endptr, int base);
 
 #ifdef __cplusplus
 }

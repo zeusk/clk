@@ -129,18 +129,18 @@ static void heap_test(void)
 		if ((i % (16*1024)) == 0)
 			printf("pass %d\n", i);
 
-//		printf("index 0x%x\n", index);
+		//printf("index 0x%x\n", index);
 		if (ptr[index]) {
-//			printf("freeing ptr[0x%x] = %p\n", index, ptr[index]);
+			//printf("freeing ptr[0x%x] = %p\n", index, ptr[index]);
 			heap_free(ptr[index]);
 			ptr[index] = 0;
 		}
 		unsigned int align = 1 << ((unsigned int)rand() % 8);
 		ptr[index] = heap_alloc((unsigned int)rand() % 32768, align);
-//		printf("ptr[0x%x] = %p, align 0x%x\n", index, ptr[index], align);
+		//printf("ptr[0x%x] = %p, align 0x%x\n", index, ptr[index], align);
 
 		DEBUG_ASSERT(((addr_t)ptr[index] % align) == 0);
-//		heap_dump();
+		//heap_dump();
 	}
 
 	for (i=0; i < 16; i++) {
@@ -156,10 +156,9 @@ static void heap_test(void)
 static struct free_heap_chunk *heap_insert_free_chunk(struct free_heap_chunk *chunk)
 {
 #if DEBUGLEVEL > INFO
-	vaddr_t chunk_end = (vaddr_t)chunk + chunk->len;
+	//vaddr_t chunk_end = (vaddr_t)chunk + chunk->len;
+	//dprintf(DEBUGLEVEL, "%s: chunk ptr %p, size 0x%lx, chunk_end 0x%x\n", __FUNCTION__, chunk, (long unsigned int)chunk->len, (unsigned int)chunk_end);
 #endif
-
-//	dprintf("%s: chunk ptr %p, size 0x%lx, chunk_end 0x%x\n", __FUNCTION__, chunk, chunk->len, chunk_end);
 
 	struct free_heap_chunk *next_chunk;
 	struct free_heap_chunk *last_chunk;
@@ -311,7 +310,7 @@ void *heap_alloc(size_t size, unsigned int alignment)
 #if DEBUG_HEAP
 			as->padding_start = ((uint8_t *)ptr + original_size);
 			as->padding_size = (((addr_t)chunk + size) - ((addr_t)ptr + original_size));
-//			printf("padding start %p, size %u, chunk %p, size %u\n", as->padding_start, as->padding_size, chunk, size);
+			//printf("padding start %p, size %u, chunk %p, size %u\n", as->padding_start, as->padding_size, chunk, size);
 
 			memset(as->padding_start, PADDING_FILL, as->padding_size);
 #endif
@@ -322,11 +321,32 @@ void *heap_alloc(size_t size, unsigned int alignment)
 
 	LTRACEF("returning ptr %p\n", ptr);
 
-//	heap_dump();
+	//heap_dump();
 
 	exit_critical_section();
 
 	return ptr;
+}
+
+void *heap_realloc(void *ptr, size_t size)
+{
+	void * tmp_ptr = NULL;
+	size_t min_size;
+	struct alloc_struct_begin *as = (struct alloc_struct_begin *)ptr;
+	as--;
+
+	if (size != 0){
+		tmp_ptr = heap_alloc(size, 0);
+		if (ptr != NULL && tmp_ptr != NULL){
+			min_size = (size < as->size) ? size : as->size;
+			memcpy(tmp_ptr, ptr, min_size);
+			heap_free(ptr);
+		}
+	} else {
+		if (ptr != NULL)
+			heap_free(ptr);
+	}
+	return(tmp_ptr);
 }
 
 void heap_free(void *ptr)
@@ -364,7 +384,7 @@ void heap_free(void *ptr)
 	heap_insert_free_chunk(heap_create_free_chunk(as->ptr, as->size));
 	exit_critical_section();
 
-//	heap_dump();
+	//heap_dump();
 }
 
 void heap_init(void)
@@ -384,8 +404,8 @@ void heap_init(void)
 	heap_insert_free_chunk(heap_create_free_chunk(theheap.base, theheap.len));
 
 	// dump heap info
-//	heap_dump();
+	//heap_dump();
 
-//	dprintf(INFO, "running heap tests\n");
-//	heap_test();
+	//dprintf(INFO, "running heap tests\n");
+	//heap_test();
 }

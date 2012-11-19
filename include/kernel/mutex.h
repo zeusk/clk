@@ -25,12 +25,19 @@
 
 #include <kernel/thread.h>
 
+#if DEBUGLEVEL > 1
+#define MUTEX_CHECK 1
 #define MUTEX_MAGIC 'mutx'
+#else
+#define MUTEX_CHECK 0
+#endif
 
 typedef struct mutex {
+#if MUTEX_CHECK
 	int magic;
-	int count;
 	thread_t *holder;
+#endif
+	int count;
 	wait_queue_t wait;
 } mutex_t;
 

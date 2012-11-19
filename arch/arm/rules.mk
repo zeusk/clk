@@ -21,8 +21,6 @@ DEFINES += \
 	ARM_WITH_L2=1
 CFLAGS += -mcpu=$(ARM_CPU) -mfpu=neon -mfloat-abi=softfp
 HANDLED_CORE := true
-#CFLAGS += -mfpu=vfp -mfloat-abi=softfp
-#CFLAGS += -mfpu=neon -mfloat-abi=softfp
 endif
 ifeq ($(ARM_CPU),arm1136j-s)
 DEFINES += \
@@ -84,7 +82,7 @@ INCLUDES += \
 	-I$(LOCAL_DIR)/include
 
 BOOTOBJS += \
-	$(LOCAL_DIR)/crt0.o
+	$(LOCAL_DIR)/start.o
 
 OBJS += \
 	$(LOCAL_DIR)/arch.Ao \
@@ -97,6 +95,10 @@ OBJS += \
 	$(LOCAL_DIR)/mmu.o \
 	$(LOCAL_DIR)/thread.o \
 	$(LOCAL_DIR)/dcc.o
+
+#4096,8192
+DEFINES += \
+	ARCH_DEFAULT_STACK_SIZE=4096
 
 # set the default toolchain to arm eabi and set a #define
 TOOLCHAIN_PREFIX ?= arm-eabi-

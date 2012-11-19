@@ -90,7 +90,7 @@ struct fastboot_var {
 struct fastboot_cmd *cmdlist;
 
 void fastboot_register(const char *prefix,
-		       void (*handle)(const char *arg, void *data, unsigned sz))
+					void (*handle)(const char *arg, void *data, unsigned sz))
 {
 	struct fastboot_cmd *cmd;
 	cmd = malloc(sizeof(*cmd));

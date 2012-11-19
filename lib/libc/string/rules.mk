@@ -34,7 +34,8 @@ C_STRING_OPS := \
 	tolower \
 	toupper \
 	itoa \
-	strrev
+	strrev \
+	replace
 
 LIBC_STRING_C_DIR := $(LOCAL_DIR)
 

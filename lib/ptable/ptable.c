@@ -60,15 +60,16 @@ void ptable_dump(struct ptable *ptable)
 	struct ptentry *ptn;
 	int i;
 
-	for (i = 0; i < ptable->count; ++i)
-	{
-		ptn = &ptable->parts[i];
-		printf("ptn %d name=%s start=%08x len=%08x \
-			flags=%08x type=%s writable=%s\n",
-			i, ptn->name, ptn->start, ptn->length,
-			ptn->flags, (ptn->type == 0 ? "Apps" : "Modem"), (ptn->perm == 0 ? "No" : "Yes")
-			);
+	printf("    ____________________________________________________ \n\
+			   |   NAME   | START | LENGTH | FLAG | TYPE | WRITABLE |\n");
+	printf("   |==========|=======|========|======|======|==========|\n");
+	for (i = 0; i < ptable->count; ++i)	{
+	ptn = &ptable->parts[i];
+	printf("   | %8s | 0x%03x | 0x%04x | 0x%02x |%5s |   %3s    |\n",
+			ptn->name, ptn->start, ptn->length, ptn->flags,
+			(ptn->type == 0 ? "APPS" : "MODEM"),(ptn->perm == 0 ? "NO" : "YES"));	
 	}
+	printf("   |__________|_______|________|______|______|__________|");	
 }
 
 struct ptentry *ptable_find(struct ptable *ptable, const char *name)
@@ -98,7 +99,7 @@ int ptable_size(struct ptable *ptable)
 }
 
 /* koko : Count bad blocks in a partition */
-int num_of_bad_blocks_in_part(const char *pName)
+/* int num_of_bad_blocks_in_part(const char *pName)
 {
 	int bad_blocks_num=0;
 	for (int i = 0; i < block_tbl.count; i++)
@@ -108,10 +109,10 @@ int num_of_bad_blocks_in_part(const char *pName)
 	}
 
 	return bad_blocks_num;
-}
+} */
 
 /* koko : Check if a partition which has bad blocks and size <=5MB exists */
-int small_part_with_bad_blocks_exists()
+/* int small_part_with_bad_blocks_exists()
 {
 	for (int i = 0; i < block_tbl.count; i++)
 	{
@@ -120,4 +121,4 @@ int small_part_with_bad_blocks_exists()
 	}
 
 	return 0;
-}
+} */

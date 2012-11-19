@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2009, Google Inc.
- * All rights reserved.
- *
- * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2010, Google Inc. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Shantanu Gupta <shans95g@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +41,7 @@
 #include <kernel/timer.h>
 #include <reg.h>
 #include <platform/iomap.h>
+#include <platform/timer.h>
 
 struct gpio_kp {
 	struct gpio_keypad_info *keypad_info;
@@ -76,15 +76,17 @@ static void check_output(struct gpio_kp *kp, int out, int polarity)
 		if (changed) {
 			int state = bitmap_test(kp->keys_pressed, key_index);
 			keys_post_event(kpinfo->keymap[key_index], state);
+			if (kpinfo->notify_fn)
+				kpinfo->notify_fn(kpinfo->keymap[key_index], state);
 		}
 	}
-
-	/* sets up the right state for the next poll cycle */
+	// sets up the right state for the next poll cycle
 	gpio = kpinfo->output_gpios[out];
-	if (kpinfo->flags & GPIOKPF_DRIVE_INACTIVE)
+	if (kpinfo->flags & GPIOKPF_DRIVE_INACTIVE) {
 		gpio_set(gpio, !polarity);
-	else
+	} else {
 		gpio_config(gpio, GPIO_INPUT);
+	}
 }
 
 static enum handler_return
@@ -92,7 +94,7 @@ gpio_keypad_timer_func(struct timer *timer, time_t now, void *arg)
 {
 	struct gpio_kp *kp = keypad;
 	struct gpio_keypad_info *kpinfo = kp->keypad_info;
-	int polarity = !!(kpinfo->flags & GPIOKPF_ACTIVE_HIGH);
+	int polarity = ! !(kpinfo->flags & GPIOKPF_ACTIVE_HIGH);
 	int out;
 	int gpio;
 
@@ -108,35 +110,20 @@ gpio_keypad_timer_func(struct timer *timer, time_t now, void *arg)
 	kp->current_output = out;
 	if (out < kpinfo->noutputs) {
 		gpio = kpinfo->output_gpios[out];
-		if (kpinfo->flags & GPIOKPF_DRIVE_INACTIVE)
+
+		if (kpinfo->flags & GPIOKPF_DRIVE_INACTIVE) {
 			gpio_set(gpio, polarity);
-		else
+		} else {
 			gpio_config(gpio, polarity ? GPIO_OUTPUT : 0);
-		timer_set_oneshot(timer, kpinfo->settle_time,
-				  gpio_keypad_timer_func, NULL);
+		}
+		timer_set_oneshot(timer, kpinfo->settle_time, gpio_keypad_timer_func, NULL);
+		goto done;
+	} /*else*/
+	if (kp->some_keys_pressed || 1) {
+		timer_set_oneshot(timer, kpinfo->poll_time, gpio_keypad_timer_func, NULL);
 		goto done;
 	}
-
-	if (/*!kp->use_irq*/ 1 || kp->some_keys_pressed) {
-		event_signal(&kp->full_scan, false);
-		timer_set_oneshot(timer, kpinfo->poll_time,
-				  gpio_keypad_timer_func, NULL);
-		goto done;
-	}
-
-#if 0
-	/* No keys are pressed, reenable interrupt */
-	for (out = 0; out < kpinfo->noutputs; out++) {
-		if (gpio_keypad_flags & GPIOKPF_DRIVE_INACTIVE)
-			gpio_set(kpinfo->output_gpios[out], polarity);
-		else
-			gpio_config(kpinfo->output_gpios[out], polarity ? GPIO_OUTPUT : 0);
-	}
-	for (in = 0; in < kpinfo->ninputs; in++)
-		enable_irq(gpio_to_irq(kpinfo->input_gpios[in]));
-	return INT_RESCHEDULE;
-#endif
-
+	
 done:
 	return INT_RESCHEDULE;
 }
@@ -152,30 +139,24 @@ void gpio_keypad_init(struct gpio_keypad_info *kpinfo)
 	ASSERT(kpinfo->keymap && kpinfo->input_gpios && kpinfo->output_gpios);
 	key_count = kpinfo->ninputs * kpinfo->noutputs;
 
-	len = sizeof(struct gpio_kp) + (sizeof(unsigned long) *
-					BITMAP_NUM_WORDS(key_count));
+	len = sizeof(struct gpio_kp) + (sizeof(unsigned long) *	BITMAP_NUM_WORDS(key_count));
 	keypad = malloc(len);
 	ASSERT(keypad);
 
 	memset(keypad, 0, len);
 	keypad->keypad_info = kpinfo;
 
-	output_val = (!!(kpinfo->flags & GPIOKPF_ACTIVE_HIGH)) ^
-		     (!!(kpinfo->flags & GPIOKPF_DRIVE_INACTIVE));
+	output_val = (!!(kpinfo->flags & GPIOKPF_ACTIVE_HIGH))^(!!(kpinfo->flags & GPIOKPF_DRIVE_INACTIVE));
 	output_cfg = kpinfo->flags & GPIOKPF_DRIVE_INACTIVE ? GPIO_OUTPUT : 0;
 	for (i = 0; i < kpinfo->noutputs; i++) {
 		gpio_set(kpinfo->output_gpios[i], output_val);
 		gpio_config(kpinfo->output_gpios[i], output_cfg);
 	}
-	for (i = 0; i < kpinfo->ninputs; i++)
+	for (i = 0; i < kpinfo->ninputs; i++) {
 		gpio_config(kpinfo->input_gpios[i], GPIO_INPUT);
-
+	}
 	keypad->current_output = kpinfo->noutputs;
-
-	event_init(&keypad->full_scan, false, EVENT_FLAG_AUTOUNSIGNAL);
+	
 	timer_initialize(&keypad->timer);
 	timer_set_oneshot(&keypad->timer, 0, gpio_keypad_timer_func, NULL);
-
-	/* wait for the keypad to complete one full scan */
-	event_wait(&keypad->full_scan);
 }

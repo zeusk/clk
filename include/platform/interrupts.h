@@ -27,6 +27,8 @@
 
 status_t mask_interrupt(unsigned int vector);
 status_t unmask_interrupt(unsigned int vector);
+void platform_init_interrupts(void);
+void platform_deinit_interrupts(void);
 
 typedef enum handler_return (*int_handler)(void *arg);
 

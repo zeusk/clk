@@ -44,8 +44,12 @@
 #define GPIO_PULLUP	0x0100
 #define GPIO_PULLDOWN	0x0200
 
+/* top 16 bits of the gpio flags are platform specific */
+#define GPIO_PLATFORM_MASK 0xffff0000
+
 int gpio_config(unsigned nr, unsigned flags);
 void gpio_set(unsigned nr, unsigned on);
 int gpio_get(unsigned nr);
-
+int gpio_to_irq(int gpio);
+void config_gpio_table(uint32_t *table, int len);
 #endif

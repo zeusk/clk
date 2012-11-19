@@ -139,7 +139,7 @@ unsigned device_available_size()
 	return get_usable_flash_size() - used;
 }
 
-bool device_variable_exist()
+int device_variable_exist()
 {
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
@@ -154,7 +154,7 @@ bool device_partition_exist(const char* pName)
 {
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
 	{
-		if ( !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
+		if ( strlen(pName)!=0 && !memcmp( device_info.partition[i].name, pName, strlen( pName ) ) )
 			return 1;
 	}
 
@@ -194,6 +194,18 @@ int mirror_partition_order(const char* pName)
 	return 0;
 }
 
+unsigned device_boot_ptn_num()
+{
+	unsigned boot_ptn_num = 0;
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{												//%x%[boo]t
+		if ( !memcmp( device_info.partition[i].name + 1, "boo", 3 ) )
+			boot_ptn_num++;								// :)
+	}
+
+	return boot_ptn_num;
+}
+
 void device_resize_asize()
 {
 	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
@@ -215,6 +227,17 @@ short device_variable_size()
 	}
 
 	return -1;	// variable partition doesn't exist
+}
+
+char *device_variable_name()
+{
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{
+		if ( strlen( device_info.partition[i].name ) != 0 && device_info.partition[i].asize == 1 )
+			return device_info.partition[i].name;
+	}
+
+	return "";	// variable partition doesn't exist
 }
 
 void device_add(const char* pData)
@@ -445,6 +468,14 @@ void device_del(const char *pName)
 	}
 }
 
+// set lk partition 1st
+void device_set_lk_partition()
+{
+	char lk_prt[64];
+	sprintf( lk_prt, "lk:%d:b", lk_size );
+	device_add(lk_prt);
+}
+
 // clear current layout
 void device_clear()
 {
@@ -455,6 +486,7 @@ void device_clear()
 			device_info.partition[i].size	= 0;
 			device_info.partition[i].asize	= 0;
 	}
+	device_set_lk_partition();
 }
 
 // Print current ptable
@@ -471,7 +503,7 @@ void device_list()
 		if ( strlen( device_info.partition[i].name ) == 0 )
 			break;
 		
-      		printf( "   | mtdblock%i | %8s |     %i     |   %4i   | %3i  |\n", i, device_info.partition[i].name,
+      		printf( "   | mtdblock%2i| %8s |     %i     |   %4i   | %3i  |\n", i, device_info.partition[i].name,
       			device_info.partition[i].asize, device_info.partition[i].size, round((float)(device_info.partition[i].size) / (float)(get_blk_per_mb())) );
 	}
 	printf("   |___________|__________|___________|__________|______|\n");
@@ -481,21 +513,17 @@ void device_list()
 /* koko : Changed default ptable so that cache is last part */
 void device_create_default()
 {
-	int lk_size = (device_info.partition[0].size == 0 ? 3 : device_info.partition[0].size);
-	char lk_prt[64];
-	sprintf( lk_prt, "lk:%d:b", lk_size );
-	
 	device_clear();
 	
-	device_add(lk_prt);
-	device_add( "recovery:5" );
-	device_add( "misc:1" );
+	device_set_lk_partition();
+	device_add( "recovery:6" );
 	device_add( "boot:5" );
+	device_add( "misc:1" );
 	device_add( "system:150" );
 	device_add( "userdata:0" );
 	if(device_info.extrom_enabled){
-	device_add( "null:1:b" );
-	device_add( "cache:191:b" );
+	//device_add( "null:1:b" );
+	device_add( "cache:192:b" );
 	}else{
 	device_add( "cache:5" );
 	}
@@ -505,10 +533,39 @@ void device_commit()
 {
 	strcpy( device_info.tag, TAG_INFO );
 	write_device_info( &device_info );
+	// Pass the commit to mirror_info too
+	strcpy( mirror_info.tag, "MIRRORINFO" );
+	for ( unsigned i = 0; i < MAX_NUM_PART; i++ )
+	{
+		if(strlen( device_info.partition[i].name ) != 0 ) {
+			strcpy( mirror_info.partition[i].name, device_info.partition[i].name );
+			mirror_info.partition[i].size = device_info.partition[i].size;
+			mirror_info.partition[i].asize = device_info.partition[i].asize;
+			mirror_info.partition[i].order = i+1;
+		} else {
+			strcpy( mirror_info.partition[i].name, "" );
+			mirror_info.partition[i].size = 0;
+			mirror_info.partition[i].asize = 0;
+		}
+	}
+	mirror_info.extrom_enabled = device_info.extrom_enabled;
+	mirror_info.fill_bbt_at_start = device_info.fill_bbt_at_start;
+	mirror_info.inverted_colors = device_info.inverted_colors;
+	mirror_info.show_startup_info = device_info.show_startup_info;
+	mirror_info.usb_detect = device_info.usb_detect;
+	mirror_info.cpu_freq = device_info.cpu_freq;
+	mirror_info.boot_sel = device_info.boot_sel;
+	mirror_info.multi_boot_screen = device_info.multi_boot_screen;
+	mirror_info.panel_brightness = device_info.panel_brightness;
+	mirror_info.udc = device_info.udc;
+	mirror_info.use_inbuilt_charging = device_info.use_inbuilt_charging;
+	mirror_info.chg_threshold = device_info.chg_threshold;
 }
 
 void device_read()
 {
+	// Get lk partition's size
+	lk_size = (device_info.partition[0].size == 0 ? 3 : device_info.partition[0].size);
 	device_clear();
 	read_device_info( &device_info );
 }
@@ -536,10 +593,17 @@ void init_device()
 	if ( strcmp( device_info.tag, TAG_INFO ) )
 	{
 		device_info.extrom_enabled = 0;
-		device_info.size_fixed = 0;
+		device_info.fill_bbt_at_start = 0;
 		device_info.inverted_colors = 0;
 		device_info.show_startup_info = 0;
-		device_info.usb_detect = 0;
+		device_info.usb_detect = 1;
+		device_info.cpu_freq = 0;
+		device_info.boot_sel = 0;
+		device_info.multi_boot_screen = 0;
+		device_info.panel_brightness = 5;
+		device_info.udc = 0;
+		device_info.use_inbuilt_charging = 0;
+		device_info.chg_threshold = 0;
 		device_create_default();
 		device_commit();
 	}

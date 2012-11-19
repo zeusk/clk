@@ -1,0 +1,20 @@
+#ifndef __BOOTREASON_H__
+#define __BOOTREASON_H__
+
+#define LK_BOOTREASON_ADDR 		0x2FFB0000
+#define SPL_BOOT_REASON_ADDR 	0x8105c
+
+#define FASTBOOT_MODE   0x77665500
+#define ANDRBOOT_MODE	0x77665501
+#define RECOVERY_MODE   0x77665502
+#define FORCEHARD_MODE  0x776655AA
+#define ERASEFLASH_MODE 0x776655EF
+
+#define MARK_ALARM_TAG 	0x53000000 //Not currently implemented in any hd2 kernel
+#define MARK_OEM_TAG   	0x6f656d00
+#define MARK_LK_TAG 	0X004B4C63
+
+#define MARK_BUTTON		0x42555454 //Power button
+#define MARK_RESET	 	0x52455354 //Reset
+
+#endif

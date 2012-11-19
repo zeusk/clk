@@ -25,19 +25,14 @@
 #include <kernel/mutex.h>
 #include <kernel/thread.h>
 
-#if DEBUGLEVEL > 1
-#define MUTEX_CHECK 1
-#endif
-
 void mutex_init(mutex_t *m)
 {
 #if MUTEX_CHECK
-//	ASSERT(m->magic != MUTEX_MAGIC);
+	m->magic = MUTEX_MAGIC;
+	m->holder = 0;
 #endif
 
-	m->magic = MUTEX_MAGIC;
 	m->count = 0;
-	m->holder = 0;
 	wait_queue_init(&m->wait);
 }
 
@@ -47,13 +42,14 @@ void mutex_destroy(mutex_t *m)
 
 #if MUTEX_CHECK
 	ASSERT(m->magic == MUTEX_MAGIC);
+	m->magic = 0;
+	
+	if (m->holder != 0 && current_thread != m->holder)
+		panic("mutex_destroy: thread %p (%s) tried to release mutex %p it doesn't own. owned by %p (%s)\n", 
+				current_thread, current_thread->name, m, m->holder, m->holder ? m->holder->name : "none");
 #endif
 
-	//if (m->holder != 0 && current_thread != m->holder)
-	//	panic("mutex_destroy: thread %p (%s) tried to release mutex %p it doesn't own. owned by %p (%s)\n", 
-	//			current_thread, current_thread->name, m, m->holder, m->holder ? m->holder->name : "none");
-
-	m->magic = 0;
+	
 	m->count = 0;
 	wait_queue_destroy(&m->wait, true);
 	exit_critical_section();
@@ -63,20 +59,17 @@ status_t mutex_acquire(mutex_t *m)
 {
 	status_t ret = NO_ERROR;
 
+#if MUTEX_CHECK
+	ASSERT(m->magic == MUTEX_MAGIC);
+	
 	if (current_thread == m->holder)
 		panic("mutex_acquire: thread %p (%s) tried to acquire mutex %p it already owns.\n",
 				current_thread, current_thread->name, m);
+#endif
 
 	enter_critical_section();
 
-#if MUTEX_CHECK
-	ASSERT(m->magic == MUTEX_MAGIC);
-#endif
-
-//	dprintf("mutex_acquire: m %p, count %d, curr %p\n", m, m->count, current_thread);
-
-	m->count++;
-	if (unlikely(m->count > 1)) {
+	if (unlikely(++m->count > 1)) {
 		/* 
 		 * block on the wait queue. If it returns an error, it was likely destroyed
 		 * out from underneath us, so make sure we dont scribble thread ownership 
@@ -86,79 +79,66 @@ status_t mutex_acquire(mutex_t *m)
 		if (ret < 0)
 			goto err;
 	}
+	
+#if MUTEX_CHECK
 	m->holder = current_thread;	
+#endif
 
 err:
 	exit_critical_section();
-
 	return ret;
 }
 
 status_t mutex_acquire_timeout(mutex_t *m, time_t timeout)
 {
 	status_t ret = NO_ERROR;
-
-	if (current_thread == m->holder)
-		panic("mutex_acquire_timeout: thread %p (%s) tried to acquire mutex %p it already owns.\n",
-				current_thread, current_thread->name, m);
-
+	
+#if MUTEX_CHECK
 	if (timeout == INFINITE_TIME)
 		return mutex_acquire(m);
 
-	enter_critical_section();
-
-#if MUTEX_CHECK
 	ASSERT(m->magic == MUTEX_MAGIC);
+	
+	if (current_thread == m->holder)
+		panic("mutex_acquire_timeout: thread %p (%s) tried to acquire mutex %p it already owns.\n",
+				current_thread, current_thread->name, m);
 #endif
 
-//	dprintf("mutex_acquire_timeout: m %p, count %d, curr %p, timeout %d\n", m, m->count, current_thread, timeout);
+	enter_critical_section();
 
-	m->count++;
-	if (unlikely(m->count > 1)) {
+	if (unlikely(m->count >= 1))
 		ret = wait_queue_block(&m->wait, timeout);
-		if (ret < NO_ERROR) {
-			/* if the acquisition timed out, back out the acquire and exit */
-			if (ret == ERR_TIMED_OUT) {
-				/* 
-				 * XXX race: the mutex may have been destroyed after the timeout,
-				 * but before we got scheduled again which makes messing with the
-				 * count variable dangerous.
-				 */
-				m->count--;
-				goto err;
-			}
-			/* if there was a general error, it may have been destroyed out from 
-			 * underneath us, so just exit (which is really an invalid state anyway)
-			 */
-		}	
+		
+	if (likely(ret == NO_ERROR)) {
+		//mutex->val++; //what?
+		m->count++;
+#if MUTEX_CHECK
+		m->holder = current_thread;
+#endif
 	}
-	m->holder = current_thread;	
 
-err:
 	exit_critical_section();
-
 	return ret;
 }
 
 status_t mutex_release(mutex_t *m)
 {
+#if MUTEX_CHECK
+	ASSERT(m->magic == MUTEX_MAGIC);
+	
 	if (current_thread != m->holder)
 		panic("mutex_release: thread %p (%s) tried to release mutex %p it doesn't own. owned by %p (%s)\n", 
 				current_thread, current_thread->name, m, m->holder, m->holder ? m->holder->name : "none");
+#endif
 
 	enter_critical_section();
 
 #if MUTEX_CHECK
-	ASSERT(m->magic == MUTEX_MAGIC);
+	m->holder = 0;
 #endif
 
-//	dprintf("mutex_release: m %p, count %d, holder %p, curr %p\n", m, m->count, m->holder, current_thread);
-
-	m->holder = 0;
-	m->count--;
-	if (unlikely(m->count >= 1)) {
+	if (unlikely(--m->count >= 1)) {
 		/* release a thread */
-//		dprintf("releasing thread\n");
 		wait_queue_wake_one(&m->wait, true, NO_ERROR);
 	}
 

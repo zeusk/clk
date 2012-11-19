@@ -32,6 +32,9 @@
 #define TARGET_XRES 480
 #define TARGET_YRES 800
 
+#define LCDC_PIXCLK_IN_PS 26
+#define LCDC_FB_PHYS      0x16600000
+#define LCDC_FB_BPP       16
 #define LCDC_FB_WIDTH     480
 #define LCDC_FB_HEIGHT    800
 
@@ -43,5 +46,25 @@
 #define LCDC_VSYNC_PULSE_WIDTH_LINES 2
 #define LCDC_VSYNC_BACK_PORCH_LINES  5
 #define LCDC_VSYNC_FRONT_PORCH_LINES 2
+
+#define LCD_CLK_PCOM_MHZ 40000000
+
+#define DEFAULT_LCD_TIMING 0
+
+/* used for setting custom timing parameters for different panels */
+struct lcdc_timing_parameters
+{
+	unsigned  lcdc_fb_width;
+	unsigned  lcdc_fb_height;
+
+	unsigned  lcdc_hsync_pulse_width_dclk;
+	unsigned  lcdc_hsync_back_porch_dclk;
+	unsigned  lcdc_hsync_front_porch_dclk;
+	unsigned  lcdc_hsync_skew_dclk;
+
+	unsigned  lcdc_vsync_pulse_width_lines;
+	unsigned  lcdc_vsync_back_porch_lines;
+	unsigned  lcdc_vsync_front_porch_lines;
+};
 
 #endif

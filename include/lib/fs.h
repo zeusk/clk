@@ -24,7 +24,7 @@
 #define FS_H_
 
 void fs_init(void);
-void fs_stop(void);
-ssize_t fs_load_file(const char *path, void *ptr);
+long fs_read(const char *filename, void *buffer, unsigned long maxsize);
+int fs_write(const char *filename, void *buffer, unsigned long maxsize);
 
 #endif

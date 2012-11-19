@@ -37,6 +37,12 @@ SECTIONS
 	.init : { *(.init) } =0x9090
 	.plt : { *(.plt) }
 
+	
+	/* .ARM.exidx is sorted, so has to go in its own output section. */
+	__exidx_start = .;
+	.ARM.exidx : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) }
+	__exidx_end = .;
+
 	.rodata : { 
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 		. = ALIGN(4);

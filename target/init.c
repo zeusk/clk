@@ -38,9 +38,25 @@ __WEAK void target_init(void)
 {
 }
 
+__WEAK void target_exit(void)
+{
+}
+
 __WEAK void *target_get_scratch_address(void)
 {
-    return (void *)(SCRATCH_ADDR);
+	return (void *)(SCRATCH_ADDR);
+}
+
+__WEAK unsigned target_get_scratch_size(void) {
+	#ifdef SCRATCH_SIZE
+		return SCRATCH_SIZE;
+	#else
+		return 339 << 20;
+	#endif
+}
+
+__WEAK char* target_get_cmdline(void) {
+	return "console=null";
 }
 
 __WEAK unsigned check_reboot_mode(void)

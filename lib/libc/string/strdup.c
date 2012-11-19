@@ -30,14 +30,9 @@
 char *
 strdup(const char *str)
 {
-	size_t len;
-	char *copy;
-	
-	len = strlen(str) + 1;
-	copy = malloc(len);
-	if (copy == NULL)
-		return NULL;
-	memcpy(copy, str, len);
-	return copy;
+	size_t len = strlen(str) + 1;
+	char *copy = malloc(len);
+
+	return copy ? memcpy(malloc(len), str, len) : NULL;
 }
 

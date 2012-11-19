@@ -42,7 +42,9 @@
 #define __GNU_INLINE __attribute__((gnu_inline))
 #define __GET_CALLER(x) __builtin_return_address(0)
 #define __GET_FRAME(x) __builtin_frame_address(0)
-/*#define INCBIN(symname, sizename, filename, section)					\
+#define __NAKED __attribute__((naked))
+
+#define INCBIN(symname, sizename, filename, section)					\
 	__asm__ (".section " section "; .align 4; .globl "#symname);		\
 	__asm__ (""#symname ":\n.incbin \"" filename "\"");					\
 	__asm__ (".section " section "; .align 1;");						\
@@ -53,7 +55,6 @@
 	extern unsigned int sizename
 
 #define INCFILE(symname, sizename, filename) INCBIN(symname, sizename, filename, ".rodata")
-*/
 
 /* look for gcc 3.0 and above */
 #if (__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 0)
@@ -76,7 +77,6 @@
 /* the may_alias attribute was introduced in gcc 3.3; before that, there
  * was no way to specify aliasiang rules on a type-by-type basis */
 #define __MAY_ALIAS __attribute__((may_alias)) 
-
 /* nonnull was added in gcc 3.3 as well */
 #define __NONNULL(x) __attribute((nonnull x))
 #else
@@ -96,6 +96,20 @@
 #else
 #define __EXTERNALLY_VISIBLE
 #endif
+
+#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
+#define __UNREACHABLE __builtin_unreachable()
+#else
+#define __UNREACHABLE
+#endif
+
+/* compiler fence */
+#define CF do { __asm__ volatile("" ::: "memory"); } while(0)
+#define __WEAK_ALIAS(x) __attribute__((weak, alias(x)))
+#define __ALIAS(x) __attribute__((alias(x)))
+#define __EXPORT __attribute__ ((visibility("default")))
+#define __LOCAL __attribute__ ((visibility("hidden")))
+#define __THREAD __thread
 
 #else
 

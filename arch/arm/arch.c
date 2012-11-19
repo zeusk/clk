@@ -36,6 +36,10 @@ static void set_vector_base(addr_t addr)
 
 void arch_early_init(void)
 {
+/* 
+	// turn off the cache
+	arch_disable_cache(UCACHE);
+ */
 	/* set the vector base to our exception vectors so we dont need to double map at 0 */
 #if ARM_CPU_CORTEX_A8
 	set_vector_base(MEMBASE);
@@ -43,10 +47,13 @@ void arch_early_init(void)
 
 #if ARM_WITH_MMU
 	arm_mmu_init();
-
+	
 	platform_init_mmu_mappings();
 #endif
-
+/* 
+	// turn the cache back on
+	arch_enable_cache(UCACHE);
+ */
 #if ARM_WITH_NEON
 	/* enable cp10 and cp11 */
 	uint32_t val;

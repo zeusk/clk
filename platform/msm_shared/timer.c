@@ -146,6 +146,10 @@ status_t platform_set_periodic_timer(
 	return 0;
 }
 
+bigtime_t current_time_hires(void)
+{
+	return (ticks * 1000ULL);
+}
 
 time_t current_time(void)
 {
@@ -157,6 +161,10 @@ void platform_init_timer(void)
 	writel(0, DGT_ENABLE);
 }
 
+void platform_stop_timer(void)
+{
+}
+
 static void wait_for_timer_op(void)
 {
 	//cedesmith: this will hang on htcleo so removed PLATFORM_QSD8K
@@ -165,7 +173,7 @@ static void wait_for_timer_op(void)
 #endif
 }
 
-void platform_uninit_timer(void)
+void platform_deinit_timer(void)
 {
 	writel(0, DGT_ENABLE);
 	wait_for_timer_op();
@@ -173,32 +181,19 @@ void platform_uninit_timer(void)
 	wait_for_timer_op();
 }
 
+inline void delay_ticks(unsigned ticks)
+{
+	ticks += readl(GPT_COUNT_VAL);
+	while(readl(GPT_COUNT_VAL) < ticks)
+		;
+}
+
 void mdelay(unsigned msecs)
 {
-  msecs *= 33;
-
-  writel(0, GPT_CLEAR);
-  writel(0, GPT_ENABLE);
-  while(readl(GPT_COUNT_VAL) != 0) ;
-
-  writel(GPT_ENABLE_EN, GPT_ENABLE);
-  while(readl(GPT_COUNT_VAL) < msecs) ;
-
-  writel(0, GPT_ENABLE);
-  writel(0, GPT_CLEAR);
+	delay_ticks((msecs * 33));
 }
 
 void udelay(unsigned usecs)
 {
-    usecs = (usecs * 33 + 1000 - 33) / 1000;
-
-    writel(0, GPT_CLEAR);
-    writel(0, GPT_ENABLE);
-    while(readl(GPT_COUNT_VAL) != 0);
-
-    writel(GPT_ENABLE_EN, GPT_ENABLE);
-    while(readl(GPT_COUNT_VAL) < usecs);
-
-    writel(0, GPT_ENABLE);
-    writel(0, GPT_CLEAR);
+	delay_ticks(((usecs * 33 + 1000 - 33) / 1000));
 }

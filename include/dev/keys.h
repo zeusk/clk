@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2009, Google Inc.
- * All rights reserved.
+ * Copyright (c) 2009-2010, Google Inc. All rights reserved.
+ * Copyright (c) 2011-2012, Shantanu Gupta <shans95g@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,57 +35,88 @@
 #include <sys/types.h>
 
 /* these are just the ascii values for the chars */
-#define KEY_0		0x30
-#define KEY_1		0x31
-#define KEY_2		0x32
-#define KEY_3		0x33
-#define KEY_4		0x34
-#define KEY_5		0x35
-#define KEY_6		0x36
-#define KEY_7		0x37
-#define KEY_8		0x38
-#define KEY_9		0x39
+#define KEY_ENTER	0x000a
 
-#define KEY_A		0x61
+#define KEY_0		0x0030
+#define KEY_1		0x0031
+#define KEY_2		0x0032
+#define KEY_3		0x0033
+#define KEY_4		0x0034
+#define KEY_5		0x0035
+#define KEY_6		0x0036
+#define KEY_7		0x0037
+#define KEY_8		0x0038
+#define KEY_9		0x0039
 
-#define KEY_ESC		0x100
-#define KEY_F1		0x101
-#define KEY_F2		0x102
-#define KEY_F3		0x103
-#define KEY_F4		0x104
-#define KEY_F5		0x105
-#define KEY_F6		0x106
-#define KEY_F7		0x107
-#define KEY_F8		0x108
-#define KEY_F9		0x109
+#define KEY_A		0x0061
+#define KEY_B		0x0062
+#define KEY_C		0x0063
+#define KEY_D		0x0064
+#define KEY_E		0x0065
+#define KEY_F		0x0066
+#define KEY_G		0x0067
+#define KEY_H		0x0068
+#define KEY_I		0x0069
+#define KEY_J		0x006a
+#define KEY_K		0x006b
+#define KEY_L		0x006c
+#define KEY_M		0x006d
+#define KEY_N		0x006e
+#define KEY_O		0x006f
+#define KEY_P		0x0070
+#define KEY_Q		0x0071
+#define KEY_R		0x0072
+#define KEY_S		0x0073
+#define KEY_T		0x0074
+#define KEY_U		0x0075
+#define KEY_V		0x0076
+#define KEY_W		0x0077
+#define KEY_X		0x0078
+#define KEY_Y		0x0079
+#define KEY_Z		0x007a
 
-#define KEY_LEFT	0x110
-#define KEY_RIGHT	0x111
-#define KEY_UP		0x112
-#define KEY_DOWN	0x113
-#define KEY_CENTER	0x114
+#define KEY_ESC		0x0100
+#define KEY_F1		0x0101
+#define KEY_F2		0x0102
+#define KEY_F3		0x0103
+#define KEY_F4		0x0104
+#define KEY_F5		0x0105
+#define KEY_F6		0x0106
+#define KEY_F7		0x0107
+#define KEY_F8		0x0108
+#define KEY_F9		0x0109
 
-#define KEY_VOLUMEUP	0x115
-#define KEY_VOLUMEDOWN	0x116
-#define KEY_MUTE	0x117
-#define KEY_SOUND	0x118
+#define KEY_LEFT	0x0110
+#define KEY_RIGHT	0x0111
+#define KEY_UP		0x0112
+#define KEY_DOWN	0x0113
+#define KEY_CENTER	0x0114
 
-#define KEY_SOFT1	0x11a
-#define KEY_SOFT2	0x11b
-#define KEY_STAR	0x11c
-#define KEY_SHARP	0x11d
-#define KEY_MAIL	0x11e
+#define KEY_VOLUMEUP	0x0115
+#define KEY_VOLUMEDOWN	0x0116
+#define KEY_MUTE	0x0117
+#define KEY_SOUND	0x0118
 
-#define KEY_SEND	0x120
-#define KEY_CLEAR	0x121
-#define KEY_HOME	0x122
-#define KEY_BACK	0x123
-#define KEY_MENU	0x124
+#define KEY_SOFT1	0x011a
+#define KEY_SOFT2	0x011b
+#define KEY_STAR	0x011c
+#define KEY_SHARP	0x011d
+#define KEY_MAIL	0x011e
 
-#define MAX_KEYS	0x1ff
+#define KEY_SEND	0x0120
+#define KEY_CLEAR	0x0121
+#define KEY_HOME	0x0122
+#define KEY_BACK	0x0123
+#define KEY_MENU	0x0124
+#define KEY_END		0x0125
+#define KEY_POWER	0x0126
+
+#define MAX_KEYS	0x01ff
+
+int keys_get_state(uint16_t code);
+int keys_set_state(uint16_t code);
+
 void keys_init(void);
 void keys_post_event(uint16_t code, int16_t value);
-int keys_get_state_n(uint16_t code);
-int keys_get_state(uint16_t code);
 
 #endif /* __DEV_KEYS_H */

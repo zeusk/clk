@@ -41,14 +41,6 @@ __WEAK void platform_init(void)
 {
 }
 
-__WEAK void display_init(void)
-{
-}
-
-__WEAK void display_shutdown(void)
-{
-}
-
-__WEAK void platform_config_interleaved_mode_gpios(void)
+__WEAK void platform_exit(void)
 {
 }

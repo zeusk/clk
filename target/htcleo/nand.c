@@ -33,8 +33,9 @@
 #include <string.h>
 #include <dev/flash.h>
 #include <lib/ptable.h>
-#include <nand.h>
+#include <target/nand.h>
 #include <dmov.h>
+#include <platform/timer.h>
 
 #define VERBOSE 0
 #define VERIFY_WRITE 0
@@ -44,8 +45,8 @@
 static void *flash_spare;
 static void *flash_data;
 
-
 typedef struct dmov_ch dmov_ch;
+
 struct dmov_ch
 {
 	volatile unsigned cmd;
@@ -71,6 +72,8 @@ static void dmov_prep_ch(dmov_ch *ch, unsigned id)
 #define NAND_CFG1_RAW 0x5045D
 
 static unsigned CFG0, CFG1;
+extern void dsb(void);
+extern void dmb(void);
 
 #define CFG1_WIDE_FLASH (1U << 1)
 
@@ -82,6 +85,9 @@ static int dmov_exec_cmdptr(unsigned id, unsigned *ptr)
 	unsigned n;
 
 	dmov_prep_ch(&ch, id);
+
+	/* Set IRQ_EN low, not using IRQ mode */
+	writel(DMOV_CONFIG_FOREC_FLUSH_RSLT | 0x0, ch.config);
 
 	writel(DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(paddr(ptr)), ch.cmd);
 
@@ -106,6 +112,8 @@ static int dmov_exec_cmdptr(unsigned id, unsigned *ptr)
 
 static struct flash_info flash_info;
 static unsigned flash_pagesize = 0;
+static unsigned num_pages_per_blk = 0;
+static unsigned num_pages_per_blk_mask = 0;
 
 struct flash_identification {
 	unsigned flash_id;
@@ -120,31 +128,31 @@ struct flash_identification {
 
 static struct flash_identification supported_flash[] =
 {
-	/*Flash ID	ID Mask		Density(MB)  	Wid 	Pgsz	Blksz		oobsz	Manuf */
-	{0x00000000,	0xFFFFFFFF,	0,		0,	0,	0,		0,	"ONFI"},
-	{0x1500aaec,	0xFF00FFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Sams"},
-	{0x5500baec,	0xFF00FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Sams"},
-	{0x1500aa98,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Tosh"},
-	{0x5500ba98,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Tosh"},
-	{0xd580b12c,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Micr"},
-	{0x5590bc2c,	0xFFFFFFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Micr"},
-	{0x1580aa2c,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
-	{0x1590aa2c,	0xFFFFFFFF,	(256<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
-	{0x1590ac2c,	0xFFFFFFFF,	(512<<20),	0,	2048,	(2048<<6),	64,	"Micr"},
-	{0x5580baad,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynx"},
-	{0x5510baad,	0xFFFFFFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynx"},
-	{0x6600bcec,	0xFF00FFFF,	(512<<20),	1,	4096,	(4096<<6),	128,	"Sams"},
-	{0x0000aaec,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*2Gbit*/
-	{0x0000acec,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*4Gbit*/
-	{0x0000bcec,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*4Gbit*/
-	{0x6601b3ec,	0xFFFFFFFF,	(1024<<20),	1,	4096,	(4096<<6),	128,	"Samsung"},	/*8Gbit 4Kpage*/
-	{0x0000b3ec,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Samsung"},	/*8Gbit*/
-	{0x0000ba2c,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*2Gbit*/
-	{0x0000bc2c,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*4Gbit*/
-	{0x0000b32c,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Micron"},	/*8Gbit*/
-	{0x0000baad,	0x0000FFFF,	(256<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*2Gbit*/
-	{0x0000bcad,	0x0000FFFF,	(512<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*4Gbit*/
-	{0x0000b3ad,	0x0000FFFF,	(1024<<20),	1,	2048,	(2048<<6),	64,	"Hynix"},	/*8Gbit*/
+	/*Flash ID		ID 			Mask Density(MB)  	Wid 	Pgsz	Blksz		oobsz	Manuf */
+	{0x00000000,	0xFFFFFFFF,	0,					0,		0,		0,			0,		"ONFI"},
+	{0x1500aaec,	0xFF00FFFF,	(256<<20),			0,		2048,	(2048<<6),	64,		"Sams"},
+	{0x5500baec,	0xFF00FFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Sams"},
+	{0x1500aa98,	0xFFFFFFFF,	(256<<20),			0,		2048,	(2048<<6),	64,		"Tosh"},
+	{0x5500ba98,	0xFFFFFFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Tosh"},
+	{0xd580b12c,	0xFFFFFFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Micr"},
+	{0x5590bc2c,	0xFFFFFFFF,	(512<<20),			1,		2048,	(2048<<6),	64,		"Micr"},
+	{0x1580aa2c,	0xFFFFFFFF,	(256<<20),			0,		2048,	(2048<<6),	64,		"Micr"},
+	{0x1590aa2c,	0xFFFFFFFF,	(256<<20),			0,		2048,	(2048<<6),	64,		"Micr"},
+	{0x1590ac2c,	0xFFFFFFFF,	(512<<20),			0,		2048,	(2048<<6),	64,		"Micr"},
+	{0x5580baad,	0xFFFFFFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Hynx"},
+	{0x5510baad,	0xFFFFFFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Hynx"},
+	{0x6600bcec,	0xFF00FFFF,	(512<<20),			1,		4096,	(4096<<6),	128,	"Sams"},
+	{0x0000aaec,	0x0000FFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Samsung"},	/*2Gbit*/
+	{0x0000acec,	0x0000FFFF,	(512<<20),			1,		2048,	(2048<<6),	64,		"Samsung"},	/*4Gbit*/
+	{0x0000bcec,	0x0000FFFF,	(512<<20),			1,		2048,	(2048<<6),	64,		"Samsung"},	/*4Gbit*/
+	{0x6601b3ec,	0xFFFFFFFF,	(1024<<20),			1,		4096,	(4096<<6),	128,	"Samsung"},	/*8Gbit 4Kpage*/
+	{0x0000b3ec,	0x0000FFFF,	(1024<<20),			1,		2048,	(2048<<6),	64,		"Samsung"},	/*8Gbit*/
+	{0x0000ba2c,	0x0000FFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Micron"},	/*2Gbit*/
+	{0x0000bc2c,	0x0000FFFF,	(512<<20),			1,		2048,	(2048<<6),	64,		"Micron"},	/*4Gbit*/
+	{0x0000b32c,	0x0000FFFF,	(1024<<20),			1,		2048,	(2048<<6),	64,		"Micron"},	/*8Gbit*/
+	{0x0000baad,	0x0000FFFF,	(256<<20),			1,		2048,	(2048<<6),	64,		"Hynix"},	/*2Gbit*/
+	{0x0000bcad,	0x0000FFFF,	(512<<20),			1,		2048,	(2048<<6),	64,		"Hynix"},	/*4Gbit*/
+	{0x0000b3ad,	0x0000FFFF,	(1024<<20),			1,		2048,	(2048<<6),	64,		"Hynix"},	/*8Gbit*/
 
 	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash	  	*/
 	/* Note: The First row will be filled at runtime during ONFI probe	*/
@@ -230,16 +238,15 @@ static void flash_nand_read_id(dmov_s *cmdlist, unsigned *ptrlist)
 	return;
 }
 
-static int flash_nand_block_isbad(dmov_s *cmdlist,
-				  unsigned *ptrlist,
-				  unsigned page)
+static int flash_nand_block_isbad(	dmov_s *cmdlist,
+									unsigned *ptrlist,
+									unsigned page)
 {
 	dmov_s *cmd = cmdlist;
 	unsigned *ptr = ptrlist;
 	unsigned *data = ptrlist + 4;
 	char buf[4];
 	unsigned cwperpage;
-	int err=0;
 
 	if (page < (NUM_PROTECTED_BLOCKS<<6))
 	{
@@ -250,8 +257,8 @@ static int flash_nand_block_isbad(dmov_s *cmdlist,
 	cwperpage = (flash_pagesize >> 9);
 
 	/* Check first page of this block */
-	if(page & 63)
-		page = page - (page & 63);
+	if(page & num_pages_per_blk_mask)
+		page = page - (page & num_pages_per_blk_mask);
 
 	/* Check bad block marker */
 	data[0] = NAND_CMD_PAGE_READ;	/* command */
@@ -307,25 +314,24 @@ static int flash_nand_block_isbad(dmov_s *cmdlist,
 	** erase success bit was not set.
 	*/
 	if(data[7] & 0x110){
-		err=-1;
+		return -1;
 	}
+
 	/* Check for bad block marker byte */
 	if (CFG1 & CFG1_WIDE_FLASH) {
 		if (buf[0] != 0xFF || buf[1] != 0xFF)
-			err=1;
+			return 1;
 	} else {
 		if (buf[0] != 0xFF)
-			err=1;
+			return 1;
 	}
 
-	return err;
+	return 0;
 }
 
-
-
 static int flash_nand_erase_block(dmov_s *cmdlist,
-				  unsigned *ptrlist,
-				  unsigned page)
+								  unsigned *ptrlist,
+								  unsigned page)
 {
 	dmov_s *cmd = cmdlist;
 	unsigned *ptr = ptrlist;
@@ -337,18 +343,27 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 		return -1;
 	}
 	/* only allow erasing on block boundaries */
-	if(page & 63) {
+	if(page & num_pages_per_blk_mask) {
 		printf("\n   Skipping block @%d [%dMB], (BOUNDARY block)", (page >> 6), (page >> 9));
 		return -1;
 	}
 
-	if((int)block_tbl.block_status[(page >> 6)] == 1) {
-		printf("\n   Skipping block @%d [%dMB], (MARKED BAD block)", (page >> 6), (page >> 9));
-		return -1;
-	}
-	else if((int)block_tbl.block_status[(page >> 6)] == 2) {
-		printf("\n   Skipping block @%d [%dMB], (OPERATION error)", (page >> 6), (page >> 9));
-		return -1;
+	if(flash_bad_blocks == -1) {
+		//block_tbl is not created
+		if (flash_nand_block_isbad(cmdlist, ptrlist, page)) {
+			printf("\n   Skipping block @%d [%dMB], (MARKED BAD block)", (page >> 6), (page >> 9));
+			return -1;
+		}
+	} else {
+		//block_tbl is created
+		if((int)block_tbl.block_status[(page >> 6)] == 1) {
+			printf("\n   Skipping block @%d [%dMB], (MARKED BAD block)", (page >> 6), (page >> 9));
+			return -1;
+		}
+		else if((int)block_tbl.block_status[(page >> 6)] == 2) {
+			printf("\n   Skipping block @%d [%dMB], (OPERATION error)", (page >> 6), (page >> 9));
+			return -1;
+		}
 	}
 	/* Erase block */
 	data[0] = NAND_CMD_BLOCK_ERASE;
@@ -395,7 +410,8 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 	ptr[0] = (paddr(cmd) >> 3) | CMD_PTR_LP;
 
 	dmov_exec_cmdptr(DMOV_NAND_CHAN, ptr);
-
+	//dmb();
+	
 #if VERBOSE
 	dprintf(INFO, "   Status: %x\n", data[5]);
 #endif
@@ -403,12 +419,22 @@ static int flash_nand_erase_block(dmov_s *cmdlist,
 	/* we fail if there was an operation error, a mpu error, or the
 	 * erase success bit was not set.
 	 */
-	if( (data[5] & 0x110) || !(data[5] & 0x80) ){
-		printf("\n   Skipping block @%d [%dMB], (OPERATION error)", (page >> 6), (page >> 9));
-		return -1;
+	int err=0;
+	if( (data[5] & 0x110) ){
+		if( (data[5] & 0x100) ){
+			printf("\n   Skipping block @%d [%dMB], (MPU VIOLATION)", (page >> 6), (page >> 9));
+		}
+		if( (data[5] & 0x10) ){
+			printf("\n   Skipping block @%d [%dMB], (NANDWRITE FAILURE)", (page >> 6), (page >> 9));
+		}
+		err=-1;
+	}
+	if( !(data[5] & 0x80) ){
+		printf("\n   Skipping block @%d [%dMB], (SUCCESS BIT NOT SET)", (page >> 6), (page >> 9));
+		err=-1;
 	}
 
-	return 0;
+	return err;
 }
 
 struct data_flash_io {
@@ -449,8 +475,15 @@ static int _flash_nand_read_page(dmov_s *cmdlist,
 	cwoobsize = /*oobavail*/ 16 / cwperpage; //spare size - ecc size (64 - 4*10)
 	int err=0;
 
-	if((int)block_tbl.block_status[(page >> 6)] > 0) {
-		return -2;
+	if(flash_bad_blocks == -1) {
+		//block_tbl is not created
+		if (flash_nand_block_isbad(cmdlist, ptrlist, page))
+			return -2;
+	} else {
+		//block_tbl is created
+		if((int)block_tbl.block_status[(page >> 6)] > 0) {
+			return -2;
+		}
 	}
 	
 	data->cmd = NAND_CMD_PAGE_READ_ALL;
@@ -730,8 +763,8 @@ static int _flash_nand_write_page(dmov_s *cmdlist,
 	return err;
 }
 
-
 char empty_buf[528];
+
 static int flash_nand_mark_badblock(dmov_s *cmdlist, unsigned *ptrlist, unsigned page)
 {
 	if( page < (NUM_PROTECTED_BLOCKS<<6) ) {
@@ -740,8 +773,8 @@ static int flash_nand_mark_badblock(dmov_s *cmdlist, unsigned *ptrlist, unsigned
 	}
 	memset(empty_buf,0,528);
 	/* Going to first page of the block */
-	if(page & 63){
-		page = page - (page & 63);
+	if(page & num_pages_per_blk_mask){
+		page = page - (page & num_pages_per_blk_mask);
 	}
 	return _flash_nand_write_page(cmdlist, ptrlist, page, empty_buf, 0, 1);
 }
@@ -843,7 +876,9 @@ static void flash_read_id(dmov_s *cmdlist, unsigned *ptrlist)
 			flash_info.num_blocks = 0;
 		}
 		ASSERT(flash_info.num_blocks);
-		//return;
+		num_pages_per_blk = flash_info.block_size / flash_pagesize;
+		num_pages_per_blk_mask = num_pages_per_blk - 1;
+		return;
 	}
 
 	// Assume 8 bit nand device for backward compatability
@@ -859,7 +894,7 @@ static void flash_read_id(dmov_s *cmdlist, unsigned *ptrlist)
 		//flash_info.num_blocks);
 }
 
-static int flash_mark_badblock(dmov_s *cmdlist, unsigned *ptrlist, unsigned page)
+static int _flash_mark_badblock(dmov_s *cmdlist, unsigned *ptrlist, unsigned page)
 {
 	return flash_nand_mark_badblock(cmdlist, ptrlist, page);
 }
@@ -910,6 +945,7 @@ void flash_init(void)
 			ASSERT(0);
 		}
 	}
+	flash_bad_blocks = -1;//block_tbl not present
 }
 
 struct ptable *flash_get_ptable(void)
@@ -945,7 +981,7 @@ int flash_erase(struct ptentry *ptn)
 
 	set_nand_configuration(ptn->type);
 	while(count-- > 0) {
-		flash_erase_block(flash_cmdlist, flash_ptrlist, block * 64);
+		flash_erase_block(flash_cmdlist, flash_ptrlist, block * num_pages_per_blk);
 		block++;
 	}
 	return 0;
@@ -954,16 +990,20 @@ int flash_erase(struct ptentry *ptn)
 /* koko : Create the bad block table
  * .partition is the partition in which the bad block is found
  * .block_status has three states :  1: The block is marked as bad
- * 				     2: Operation error, a mpu error, or the erase success bit was not set
- *			     	     0: The block is good
+ * 				     				 2: Operation error, a mpu error, or the erase success bit was not set
+ *			     	     			 0: The block is good
  * .is_marked indicates if the block is marked as bad
  * .pos is the location of the bad block
  * .pos_from_pstart is the space between the partition's start and the bad block's location
  * .pos_from_pend is the space between the bad block's location and the partition's end
  * .count is the total number of bad blocks
  */
-int bad_block_table(struct ptentry *ptn)
+int flash_bad_block_table(struct ptentry *ptn)
 {
+	if (ptn == NULL) 
+	{
+		return -1;
+	}
 	unsigned block = ptn->start;
 	unsigned i = ptn->length;
 	block_tbl.block_status = (unsigned int *) malloc(sizeof(unsigned int) * flash_info.num_blocks);
@@ -974,21 +1014,21 @@ int bad_block_table(struct ptentry *ptn)
 	set_nand_configuration(ptn->type);
 	while(i-- > 0)
 	{
-		_isbad=flash_nand_block_isbad(flash_cmdlist, flash_ptrlist, block * 64);
-		if(_isbad){
-      			for(int j = 0; j < ptable_size(ptable); j++){
-      				if( block >= ptable_get(ptable, j)->start ){
+		_isbad=flash_nand_block_isbad(flash_cmdlist, flash_ptrlist, block * num_pages_per_blk);
+		if(_isbad!=0){
+      		for(int j = 0; j < ptable_size(ptable); j++){
+      			if( block >= ptable_get(ptable, j)->start ){
 					if(block < (ptable_get(ptable, j)->start + ptable_get(ptable, j)->length)){
       						strcpy( block_tbl.blocks[block_tbl.count].partition, ptable_get(ptable, j)->name );
-						block_tbl.blocks[block_tbl.count].pos_from_pstart = block - ptable_get(ptable, j)->start;
-						block_tbl.blocks[block_tbl.count].pos_from_pend = ptable_get(ptable, j)->start + ptable_get(ptable, j)->length - block;
-      					}
+							block_tbl.blocks[block_tbl.count].pos_from_pstart = block - ptable_get(ptable, j)->start;
+							block_tbl.blocks[block_tbl.count].pos_from_pend = ptable_get(ptable, j)->start + ptable_get(ptable, j)->length - block;
+      				}
 				}
-      			}
+      		}
 
-      			if(strlen(block_tbl.blocks[block_tbl.count].partition)==0){
-      				strcpy( block_tbl.blocks[block_tbl.count].partition, "ExtROM" );
-      			}
+      		if(strlen(block_tbl.blocks[block_tbl.count].partition)==0){
+      			strcpy( block_tbl.blocks[block_tbl.count].partition, "ExtROM" );
+      		}
 			block_tbl.block_status[block] = (_isbad>0 ? 1 : 2);
 			block_tbl.blocks[block_tbl.count].pos = block;
 			block_tbl.blocks[block_tbl.count].is_marked = (_isbad>0 ? 1 : 0);
@@ -1001,16 +1041,42 @@ int bad_block_table(struct ptentry *ptn)
 	return block_tbl.count;
 }
 
+int flash_mark_badblock(struct ptentry *ptn, unsigned block)
+{
+	unsigned firstpage = ptn->start * num_pages_per_blk;
+	unsigned lastpage = (ptn->start + ptn->length) * num_pages_per_blk;
+	
+	if (ptn->type == TYPE_MODEM_PARTITION) {
+		dprintf(CRITICAL, "\n   flash_mark_badblock: modem partition not supported");
+		return -1;
+	}
+	set_nand_configuration(TYPE_APPS_PARTITION);
+	if((block << 6) <= firstpage) {
+		printf("\n   flash_mark_badblock: out of boundaries\
+				\n   given page is %i while first page is %i)", (block << 6), firstpage);
+		return -1;
+	}
+	if((block << 6) >= lastpage) {
+		printf("\n   flash_mark_badblock: out of boundaries\
+				\n   given page is %i while last page is %i)", (block << 6), lastpage);
+		return -1;
+	}
+	
+	printf("\n   flash_mark_badblock: block %i @ '%s'", block, ptn->name);
+	
+	return _flash_mark_badblock(flash_cmdlist, flash_ptrlist, (block << 6));
+}
+
 int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 			unsigned offset, void *data, unsigned bytes)
 {
-	unsigned page = (ptn->start * 64) + (offset / flash_pagesize);
-	unsigned lastpage = (ptn->start + ptn->length) * 64;
+	unsigned page = (ptn->start * num_pages_per_blk) + (offset / flash_pagesize);
+	unsigned lastpage = (ptn->start + ptn->length) * num_pages_per_blk;
 	unsigned count = (bytes + flash_pagesize - 1 + extra_per_page) / (flash_pagesize + extra_per_page);
 	unsigned *spare = (unsigned*) flash_spare;
 	unsigned errors = 0;
 	unsigned char *image = data;
-	unsigned current_block = (page - (page & 63)) >> 6;
+	unsigned current_block = (page - (page & num_pages_per_blk_mask)) >> 6;
 	unsigned start_block = ptn->start;
 	int result = 0;
 	int start_block_count = 0;
@@ -1027,10 +1093,20 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 	{
 		start_block_count = (current_block - start_block);
 		while (start_block_count && (start_block < (ptn->start + ptn->length))) {
-			if((int)block_tbl.block_status[start_block] > 0) {
-				page += 64;
-			}else{
-				start_block_count--;
+			if(flash_bad_blocks == -1) {
+				//block_tbl is not created
+				if (_flash_block_isbad(flash_cmdlist, flash_ptrlist, start_block*64)) {
+					page += num_pages_per_blk;
+				}else{
+					start_block_count--;
+				}
+			} else {
+				//block_tbl is created
+				if((int)block_tbl.block_status[start_block] > 0) {
+					page += num_pages_per_blk;
+				}else{
+					start_block_count--;
+				}
 			}
 			start_block++;
 		}
@@ -1052,12 +1128,13 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 		}
 		else if (result == -2) {
 			// bad block, go to next block same offset
-			page += 64;
+			page += num_pages_per_blk;
 			errors++;
 			continue;
 		}
 
 		page++;
+		//memcpy(image, flash_data, flash_pagesize);
 		image += flash_pagesize;
 		memcpy(image, spare, extra_per_page);
 		image += extra_per_page;
@@ -1065,15 +1142,17 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 	}
 
 	/* could not find enough valid pages before we hit the end */
-	printf("\n   flash_read_image: failed (%d errors)", errors);
+	if(errors)
+		printf("\n   flash_read_image: failed (%d errors)", errors);
+		
 	return 0xffffffff;
 }
 
 int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 		unsigned bytes)
 {
-	unsigned page = ptn->start * 64;
-	unsigned lastpage = (ptn->start + ptn->length) * 64;
+	unsigned page = ptn->start * num_pages_per_blk;
+	unsigned lastpage = (ptn->start + ptn->length) * num_pages_per_blk;
 	unsigned *spare = (unsigned*) flash_spare;
 	const unsigned char *image = data;
 	unsigned wsize = flash_pagesize + extra_per_page;
@@ -1098,9 +1177,26 @@ int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 			return -1;
 		}
 
-		if((page & 63) == 0) {
+		if((page & num_pages_per_blk_mask) == 0) {
 			if(flash_erase_block(flash_cmdlist, flash_ptrlist, page)) {
-				page += 64;
+				page += num_pages_per_blk;
+				/*
+				 * koko: Testing stuff...
+				 *		If the img has exactly the same size as the partition
+				 * 		(i.e. the boot.img from a NANDROID backup has the size
+				 * 		of the 'boot' partition, not the kernel's real size)
+				 *		and there is a flash_erase_block error(bad block?)
+				 * 		we will fail writing it to the same sized 'boot' partition
+				 * 		with an error 'flash_write_image: out of space'.
+				 * 		So while we skip the bad block(64pages), we can 
+				 * 		decrease the remaining bytes accordingly and hope that the 'real'
+				 *		part of the image (don't care for the last FFs) is written..
+				 */
+				if(!memcmp(ptn->name	, "boot"	, strlen(ptn->name))
+				|| !memcmp(ptn->name	, "recovery", strlen(ptn->name))
+				|| !memcmp(ptn->name+1	, "boot"	, strlen(ptn->name+1))) {
+					bytes -= num_pages_per_blk*wsize;
+				}
 				continue;
 			}
 		}
@@ -1112,15 +1208,15 @@ int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 		}
 		if(r) {
 			dprintf(INFO, "   flash_write_image: write failure @ page %d (src %d)\n", page, image - (const unsigned char *)data);
-			image -= (page & 63) * wsize;
-			bytes += (page & 63) * wsize;
-			page &= ~63;
+			image -= (page & num_pages_per_blk_mask) * wsize;
+			bytes += (page & num_pages_per_blk_mask) * wsize;
+			page &= ~num_pages_per_blk_mask;
 			flash_erase_block(flash_cmdlist, flash_ptrlist, page);
 			if (ptn->type != TYPE_MODEM_PARTITION) {
-				flash_mark_badblock(flash_cmdlist, flash_ptrlist, page);
+				_flash_mark_badblock(flash_cmdlist, flash_ptrlist, page);
 			}
 			printf("\n   flash_write_image: restart write @ page %d (src %d)", page, image - (const unsigned char *)data);
-			page += 64;
+			page += num_pages_per_blk;
 			continue;
 		}
 		page++;
@@ -1129,10 +1225,10 @@ int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 	}
 
 	/* erase any remaining pages in the partition */
-	page = (page + 63) & (~63);
+	page = (page + num_pages_per_blk_mask) & (~num_pages_per_blk_mask);
 	while(page < lastpage){
 		flash_erase_block(flash_cmdlist, flash_ptrlist, page);
-		page += 64;
+		page += num_pages_per_blk;
 	}
 
 	return 0;

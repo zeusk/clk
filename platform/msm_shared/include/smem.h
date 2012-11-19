@@ -64,6 +64,15 @@ struct smem {
 	struct smem_alloc_info		alloc_info[128];
 };
 
+struct smem_board_info_v2
+{
+    unsigned format;
+    unsigned msm_id;
+    unsigned msm_version;
+    char     build_id[32];
+    unsigned raw_msm_id;
+    unsigned raw_msm_version;
+};
 struct smem_board_info_v3
 {
     unsigned format;
@@ -89,11 +98,87 @@ struct smem_board_info_v5
     unsigned fused_chip;
 };
 
+struct smem_board_info_v6
+{
+    struct smem_board_info_v3 board_info_v3;
+    unsigned platform_version;
+    unsigned fused_chip;
+    unsigned platform_subtype;
+    unsigned buffer_align; //Need for 8 bytes alignment while reading from shared memory.
+};
+
+typedef struct
+{
+    unsigned key_len;
+    unsigned iv_len;
+    unsigned char key[32];
+    unsigned char iv[32];
+}boot_symmetric_key_info;
+
+typedef struct
+{
+    unsigned int update_status;
+    unsigned int bl_error_code;
+}boot_ssd_status;
+
+#if PLATFORM_MSM7X30
+
+typedef struct
+{
+    boot_symmetric_key_info key_info;
+    uint32_t boot_flags;
+    uint32_t boot_key_press[5];
+    uint32_t time_tick;
+    boot_ssd_status status;
+    uint8_t buff_align[4];
+}boot_info_for_apps;
+
+#elif PLATFORM_MSM7K
+
+typedef struct
+{
+    uint32_t apps_img_start_addr;
+    uint32_t boot_flags;
+    boot_ssd_status status;
+}boot_info_for_apps;
+
+#elif PLATFORM_MSM7X27A
+
+typedef struct
+{
+    uint32_t apps_img_start_addr;
+    uint32_t  boot_flags;
+    boot_ssd_status status;
+    boot_symmetric_key_info  key_info;
+    uint16_t boot_key_press[10];
+    uint32_t timetick;
+    uint8_t PAD[28];
+}boot_info_for_apps;
+
+#else
+
+/* Dummy structure to keep it for other targets */
+typedef struct
+{
+    uint32_t  boot_flags;
+    boot_ssd_status status;
+}boot_info_for_apps;
+
+#endif
+
 /* chip information */
 enum {
     UNKNOWN = 0,
     MDM9200 = 57,
     MDM9600 = 58,
+    MSM8260 = 70,
+    MSM8660 = 71,
+    APQ8060 = 86,
+    MSM7225A = 88,
+    MSM7625A = 89,
+    MSM7227A = 90,
+    MSM7627A = 91,
+    ESM7227A = 92,
 };
 
 enum platform
@@ -103,9 +188,21 @@ enum platform
     HW_PLATFORM_FFA     = 2,
     HW_PLATFORM_FLUID   = 3,
     HW_PLATFORM_SVLTE   = 4,
+    HW_PLATFORM_QT      = 6,
+    HW_PLATFORM_MTP     = 8,
+    HW_PLATFORM_LIQUID  = 9,
+    HW_PLATFORM_DRAGON  = 10,
     HW_PLATFORM_32BITS  = 0x7FFFFFFF
 };
 
+enum platform_subtype
+{
+    HW_PLATFORM_SUBTYPE_UNKNOWN = 0,
+    HW_PLATFORM_SUBTYPE_CSFB    = 1,
+    HW_PLATFORM_SUBTYPE_SVLTE1  = 2,
+    HW_PLATFORM_SUBTYPE_SVLTE2A = 3,
+    HW_PLATFORM_SUBTYPE_32BITS  = 0x7FFFFFFF
+};
 
 typedef enum {
 	SMEM_SPINLOCK_ARRAY = 7,
@@ -120,6 +217,8 @@ typedef enum {
 
 	SMEM_POWER_ON_STATUS_INFO = 403,
 
+	SMEM_BOOT_INFO_FOR_APPS = 418,
+	
 	SMEM_FIRST_VALID_TYPE = SMEM_SPINLOCK_ARRAY,
 	SMEM_LAST_VALID_TYPE = SMEM_POWER_ON_STATUS_INFO,
 } smem_mem_type_t;
@@ -196,6 +295,15 @@ struct smem_ram_ptable {
 } __attribute__ ((__packed__));
 
 /* Power on reason/status info */
-#define PWR_ON_EVENT_USB_CHG 0x20
+#define  PWR_ON_EVENT_KEYPAD     0x1
+#define  PWR_ON_EVENT_RTC        0x2
+#define  PWR_ON_EVENT_CABLE      0x4
+#define  PWR_ON_EVENT_SMPL       0x8
+#define  PWR_ON_EVENT_WDOG       0x10
+#define  PWR_ON_EVENT_USB_CHG    0x20
+#define  PWR_ON_EVENT_WALL_CHG   0x40
+
+unsigned smem_read_alloc_entry_offset(smem_mem_type_t type, void *buf, int len, int offset);
+int smem_ram_ptable_init(struct smem_ram_ptable *smem_ram_ptable);
 
 #endif /* __PLATFORM_MSM_SHARED_SMEM_H */

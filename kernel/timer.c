@@ -22,11 +22,10 @@
  */
 #include <debug.h>
 #include <list.h>
+#include <compiler.h>
 #include <kernel/thread.h>
 #include <kernel/timer.h>
 #include <platform/timer.h>
-#include <platform.h>
-
 static struct list_node timer_queue;
 
 void timer_initialize(timer_t *timer)
@@ -79,7 +78,7 @@ static void timer_set(timer_t *timer, time_t delay, time_t period, timer_callbac
 
 	insert_timer_in_queue(timer);
 
-	#if PLATFORM_HAS_DYNAMIC_TIMER
+#if PLATFORM_HAS_DYNAMIC_TIMER
 	if (list_peek_head_type(&timer_queue, timer_t, node) == timer) {
 	/* we just modified the head of the timer queue */
 	//		TRACEF("setting new timer for %u msecs\n", (uint)delay);
@@ -120,8 +119,8 @@ void timer_cancel(timer_t *timer)
 	 * periodic timer callback.
 	 */
 	timer->periodic_time = 0;
-	timer->callback = NULL;
-	timer->arg = NULL;
+	//timer->callback = NULL;
+	//timer->arg = NULL;
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
 	/* see if we've just modified the head of the timer queue */
@@ -150,10 +149,10 @@ void timer_cancel(timer_t *timer)
 static enum handler_return timer_tick(void *arg, time_t now)
 {
 	timer_t *timer;
-	enum handler_return ret = INT_NO_RESCHEDULE;
-
+	enum handler_return ret __UNUSED = INT_NO_RESCHEDULE ;
+	
 #if THREAD_STATS
-	thread_stats.timer_ints++;
+	THREAD_STATS_INC(timer_ints);
 #endif
 
 	for (;;) {
@@ -170,10 +169,10 @@ static enum handler_return timer_tick(void *arg, time_t now)
 //		ASSERT(timer);
 
 #if THREAD_STATS
-		thread_stats.timers++;
+	THREAD_STATS_INC(timers);
 #endif
 
-		bool periodic = timer->periodic_time > 0;
+		//bool periodic = timer->periodic_time > 0;
 
 //		TRACEF("timer %p firing callback %p, arg %p\n", timer, timer->callback, timer->arg);
  		if (timer->callback(timer, now, timer->arg) == INT_RESCHEDULE)
@@ -182,7 +181,7 @@ static enum handler_return timer_tick(void *arg, time_t now)
 		/* if it was a periodic timer and it hasn't been requeued
 		 * by the callback put it back in the list
 		 */
-		if (periodic && !list_in_list(&timer->node) && timer->periodic_time > 0) {
+		if (/*periodic && */!list_in_list(&timer->node) && timer->periodic_time > 0) {
 //			TRACEF("periodic timer, period %u\n", (uint)timer->periodic_time);
 			timer->scheduled_time = now + timer->periodic_time;
 			insert_timer_in_queue(timer);
@@ -207,13 +206,13 @@ static enum handler_return timer_tick(void *arg, time_t now)
  		ret = INT_RESCHEDULE;
 #endif
  	// XXX fix this, should return ret
-	return INT_RESCHEDULE;
+	return /*ret;*/INT_RESCHEDULE;
 }
 
 void timer_init(void)
 {
 	list_initialize(&timer_queue);
-
+	
 	/* register for a periodic timer tick */
 	platform_set_periodic_timer(timer_tick, NULL, 10); /* 10ms */
 }

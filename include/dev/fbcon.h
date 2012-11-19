@@ -40,8 +40,23 @@
 #ifndef FB_FORMAT_RGB888
 #define FB_FORMAT_RGB888 0
 #endif
+
 #define MSM_MDP_BASE1 0xAA200000
 #define LCDC_BASE     0xE0000
+
+#define RGB565_RED		0xf800
+#define RGB565_GREEN	0x07e0
+#define RGB565_BLUE		0x001f
+#define RGB565_YELLOW	0xffe0
+#define RGB565_CYAN		0x07ff
+#define RGB565_MAGENTA	0xf81f
+#define RGB565_WHITE	0xffff
+#define RGB565_BLACK	0x0000
+#define RGB565_lboot	0x02E0
+#define RGB888_BLACK    0x000000
+#define RGB888_WHITE    0xffffff
+
+#define SHOW_LOGO_SPLASH_H 1
 
 struct fbcon_config {
 	void		*base;
@@ -64,10 +79,11 @@ bool didyouscroll(void);
 /* koko : Needed for option to invert colors */
 bool inverted;
 
-void fbcon_setup(struct fbcon_config *cfg);
+void fbcon_setup(struct fbcon_config *cfg, int inv);
 void fbcon_putc(char c);
 void fbcon_clear(void);
 void fbcon_resetdisp(void);
+void fbcon_teardown(void);
 void fbcon_flush(void);
 void fbcon_push(void);
 void fbcon_setfg(unsigned fg);

@@ -56,7 +56,9 @@ int flash_read_ext(struct ptentry *ptn, unsigned extra_per_page,
 		   unsigned offset, void *data, unsigned bytes);
 int flash_write(struct ptentry *ptn, unsigned extra_per_page, const void *data,
 		unsigned bytes);
-int bad_block_table(struct ptentry *ptn);
+int flash_bad_block_table(struct ptentry *ptn);
+int flash_mark_badblock(struct ptentry *ptn, unsigned block);
+int flash_bad_blocks;
 
 static inline int flash_read(struct ptentry *ptn, unsigned offset, void *data,
 			     unsigned bytes)

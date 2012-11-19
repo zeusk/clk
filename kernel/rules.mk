@@ -10,5 +10,5 @@ OBJS += \
 	$(LOCAL_DIR)/main.o \
 	$(LOCAL_DIR)/mutex.o \
 	$(LOCAL_DIR)/thread.o \
-	$(LOCAL_DIR)/timer.o
-
+	$(LOCAL_DIR)/timer.o \
+	$(LOCAL_DIR)/semaphore.o

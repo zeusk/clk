@@ -33,6 +33,10 @@ struct list_node {
 	struct list_node *next;
 };
 
+struct list_head {
+	struct list_head *next, *prev;
+};
+
 #define LIST_INITIAL_VALUE(list) { &(list), &(list) }
 
 static inline void list_initialize(struct list_node *list)

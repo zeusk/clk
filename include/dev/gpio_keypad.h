@@ -51,8 +51,13 @@ struct gpio_keypad_info {
 	time_t settle_time;
 	time_t poll_time;
 	unsigned flags;
+	/*
+	 * Can be used by board to be notified without using extra resources
+	 * Used for key backlight, power off etc..
+	 */
+	void (*notify_fn)(unsigned key_code, unsigned state);
 };
 
 void gpio_keypad_init(struct gpio_keypad_info *kpinfo);
 
-#endif /* __DEV_GPIO_KEYPAD_H */
+#endif
