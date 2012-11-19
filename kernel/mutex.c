@@ -76,15 +76,18 @@ status_t mutex_acquire(mutex_t *m)
 		 * on the mutex.
 		 */
 		ret = wait_queue_block(&m->wait, INFINITE_TIME);
+
+#if MUTEX_CHECK
 		if (ret < 0)
 			goto err;
+#endif
 	}
 	
 #if MUTEX_CHECK
 	m->holder = current_thread;	
+err:
 #endif
 
-err:
 	exit_critical_section();
 	return ret;
 }
@@ -92,30 +95,43 @@ err:
 status_t mutex_acquire_timeout(mutex_t *m, time_t timeout)
 {
 	status_t ret = NO_ERROR;
-	
+
 #if MUTEX_CHECK
 	if (timeout == INFINITE_TIME)
-		return mutex_acquire(m);
+		return mutex_acquire(m); // Unecessary overhead for correct calls, this function can handle this anyway
 
 	ASSERT(m->magic == MUTEX_MAGIC);
-	
+
 	if (current_thread == m->holder)
 		panic("mutex_acquire_timeout: thread %p (%s) tried to acquire mutex %p it already owns.\n",
-				current_thread, current_thread->name, m);
+		      current_thread, current_thread->name, m);
 #endif
+
 
 	enter_critical_section();
 
-	if (unlikely(m->count >= 1))
+	if (unlikely(++m->count > 1)) {
 		ret = wait_queue_block(&m->wait, timeout);
-		
-	if (likely(ret == NO_ERROR)) {
-		//mutex->val++; //what?
-		m->count++;
+		if (ret < NO_ERROR) {
+			/* if the acquisition timed out, back out the acquire and exit */
+			if (ret == ERR_TIMED_OUT) {
+				/*
+				 * XXX race: the mutex may have been destroyed after the timeout,
+				 * but before we got scheduled again which makes messing with the
+				 * count variable dangerous.
+				 */
+				m->count--;
+			}
 #if MUTEX_CHECK
-		m->holder = current_thread;
+			goto err;
 #endif
+		}
 	}
+
+#if MUTEX_CHECK
+	m->holder = current_thread;
+err:
+#endif
 
 	exit_critical_section();
 	return ret;
@@ -137,7 +153,7 @@ status_t mutex_release(mutex_t *m)
 	m->holder = 0;
 #endif
 
-	if (unlikely(--m->count >= 1)) {
+	if (unlikely(--m->count != 0)) {
 		/* release a thread */
 		wait_queue_wake_one(&m->wait, true, NO_ERROR);
 	}
